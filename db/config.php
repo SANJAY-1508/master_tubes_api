@@ -121,6 +121,39 @@ function uniqueID($prefix_name, $auto_increment_id)
     return $hashid;
 }
 
+// Image Upload Function (Base64 → WebP)
+// ===================================================================
+function saveBase64Image($base64String, $uploadDir = "../uploads/products/")
+{
+    if (empty($base64String)) return null;
+
+    // Create directory if not exists
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    // Remove data URL prefix
+    if (preg_match('/^data:image\/[a-z]+;base64,/', $base64String)) {
+        $base64String = preg_replace('/^data:image\/[a-z]+;base64,/', '', $base64String);
+    }
+
+    $imageData = base64_decode($base64String);
+    if ($imageData === false) return null;
+
+    $source = @imagecreatefromstring($imageData);
+    if ($source === false) return null;
+
+    $timestamp = str_replace([' ', ':'], '-', date('Y-m-d H:i:s'));
+    $filename = $timestamp . '.webp';
+    $filepath = $uploadDir . $filename;
+
+    $success = imagewebp($source, $filepath, 80); // 80% quality
+    imagedestroy($source);
+
+    return $success ? $filename : null;
+}
+
+
 function ImageRemove($string, $id)
 {
     global $conn;
