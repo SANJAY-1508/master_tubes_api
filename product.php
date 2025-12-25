@@ -81,7 +81,7 @@ if ($method === 'POST' && $is_read_action) {
     $result = $stmt->get_result();
     $products = [];
 
-    $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/zen_online_stores/uploads/products/";
+    $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/products/";
 
     while ($row = $result->fetch_assoc()) {
         if (!empty($row['product_img'])) {
@@ -174,7 +174,7 @@ else if ($method === 'POST' && $is_create_action) {
         $output["head"]["code"] = 200;
         $output["head"]["msg"] = "Product created successfully.";
         $output["body"]["product_id"] = $new_product_id;
-        $output["body"]["image_url"] = $savedImageName ? "http://{$_SERVER['SERVER_NAME']}/zen_online_stores/uploads/products/{$savedImageName}" : null;
+        $output["body"]["image_url"] = $savedImageName ? "http://{$_SERVER['SERVER_NAME']}/master_tubes_website_api/uploads/products/{$savedImageName}" : null;
     } else {
         $output["head"]["code"] = 500;
         $output["head"]["msg"] = "DB Error: " . $stmt->error;
@@ -292,7 +292,7 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
         $output["head"]["code"] = 200;
         $output["head"]["msg"] = "Product updated successfully.";
         if ($include_image_update && $finalImageName) {
-            $output["body"]["image_url"] = "http://{$_SERVER['SERVER_NAME']}/zen_online_stores/uploads/products/{$finalImageName}";
+            $output["body"]["image_url"] = "http://{$_SERVER['SERVER_NAME']}/master_tubes_website_api/uploads/products/{$finalImageName}";
         }
     } else {
         $output["head"]["code"] = 400;
