@@ -195,7 +195,7 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
 
     // Check duplicate code (exclude current product)
     $check = $conn->prepare("SELECT id FROM product WHERE product_code = ? AND company_id = ? AND product_id != ? AND deleted_at = 0");
-    $check->bind_param("sis", $product_code, $company_id, $product_id);
+    $check->bind_param("sss", $product_code, $company_id, $product_id);
     $check->execute();
     if ($check->get_result()->num_rows > 0) {
         $output["head"]["code"] = 400;
@@ -208,7 +208,7 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
     // Fetch current product
     $fetch_sql = "SELECT * FROM `product` WHERE `product_id` = ? AND `company_id` = ? AND `deleted_at` = 0 AND `status` = 0";
     $fetch_stmt = $conn->prepare($fetch_sql);
-    $fetch_stmt->bind_param("is", $product_id, $company_id);
+    $fetch_stmt->bind_param("ss", $product_id, $company_id);
     $fetch_stmt->execute();
     $fetch_result = $fetch_stmt->get_result();
     if ($fetch_result->num_rows === 0) {
