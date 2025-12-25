@@ -20,9 +20,9 @@ $company_id         = isset($obj->company_id) ? trim($obj->company_id) : null;
 $product_id         = isset($obj->product_id) ? trim($obj->product_id) : null;
 $product_name       = isset($obj->product_name) ? trim($obj->product_name) : null;
 $product_img        = isset($obj->product_img) ? $obj->product_img : null;
-$product_code       = isset($obj->product_code) ? trim($obj->product_code) : null;;
-$unit_id            = isset($obj->unit_id) ? trim($obj->unit_id) : null;;
-$category_id        = isset($obj->category_id) ? trim($obj->category_id) : null;;
+$product_code       = isset($obj->product_code) ? trim($obj->product_code) : null;
+$unit_id            = isset($obj->unit_id) ? trim($obj->unit_id) : null;
+$category_id        = isset($obj->category_id) ? trim($obj->category_id) : null;
 
 $product_price      = isset($obj->product_price) ? floatval($obj->product_price) : null;
 $product_stock      = isset($obj->product_stock) ? floatval($obj->product_stock) : null;
@@ -31,9 +31,10 @@ $product_disc_amt   = isset($obj->product_disc_amt) ? floatval($obj->product_dis
 $product_details    = isset($obj->product_details) ? trim($obj->product_details) : null;
 $discount_lock      = isset($obj->discount_lock) ? intval($obj->discount_lock) : null;
 $status             = isset($obj->status) ? intval($obj->status) : null;
+$new_arrival        = isset($obj->new_arrival) ? intval($obj->new_arrival) : null;
 
 $id                 = isset($obj->id) ? intval($obj->id) : null;
-$user_id            = isset($obj->user_id) ? trim($obj->user_id) : null;;
+$user_id            = isset($obj->user_id) ? trim($obj->user_id) : null;
 $created_name       = isset($obj->created_name) ? trim($obj->created_name) : null;
 
 // Helper flags
@@ -140,15 +141,16 @@ else if ($method === 'POST' && $is_create_action) {
     $product_details = $product_details ?? null;
     $discount_lock = $discount_lock ?? 0;
     $status = $status ?? 0;
+    $new_arrival = $new_arrival ?? 0;
 
     $stmt = $conn->prepare("INSERT INTO `product` 
         (`product_id`, `company_id`, `product_name`, `product_img`, `product_code`, `unit_id`, `category_id`, 
          `product_details`, `product_price`, `product_with_discount_price`, `product_stock`, `product_disc_amt`, 
-         `discount_lock`, `status`, `created_by`, `created_name`) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+         `discount_lock`, `new_arrival`, `status`, `created_by`, `created_name`) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
     $stmt->bind_param(
-        "ssssssssddddssss",
+        "ssssssssddddsssss",
         $new_product_id,
         $company_id,
         $product_name,
@@ -162,6 +164,7 @@ else if ($method === 'POST' && $is_create_action) {
         $product_stock,
         $product_disc_amt,
         $discount_lock,
+        $new_arrival,
         $status,
         $user_id,
         $created_name
@@ -244,6 +247,7 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
         'product_disc_amt' => $product_disc_amt,
         'product_details' => $product_details,
         'discount_lock' => $discount_lock,
+        'new_arrival' => $new_arrival,
         'status' => $status
     ];
 
