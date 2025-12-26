@@ -16,7 +16,6 @@ $output = array();
 date_default_timezone_set('Asia/Calcutta');
 
 // Input variables 
-$company_id         = isset($obj->company_id) ? trim($obj->company_id) : null;
 $product_id         = isset($obj->product_id) ? trim($obj->product_id) : null;
 $product_name       = isset($obj->product_name) ? trim($obj->product_name) : null;
 $product_img        = isset($obj->product_img) ? $obj->product_img : null;
@@ -40,41 +39,40 @@ $created_name       = isset($obj->created_name) ? trim($obj->created_name) : nul
 // Helper flags
 $method = $_SERVER['REQUEST_METHOD'];
 $is_read_action = isset($obj->fetch_all) || (isset($obj->id) && !isset($obj->update_action) && !isset($obj->delete_action));
-$is_create_action = $product_name && $product_code && $company_id && $unit_id && $category_id && !isset($obj->id) && !isset($obj->product_id) && !isset($obj->update_action) && !isset($obj->delete_action);
-$is_update_action = $product_id && $company_id && isset($obj->update_action);
-$is_delete_action = $product_id && $company_id && isset($obj->delete_action);
-
+$is_create_action = $product_name && $product_code && $unit_id && $category_id && !isset($obj->id) && !isset($obj->product_id) && !isset($obj->update_action) && !isset($obj->delete_action);
+$is_update_action = $product_id && isset($obj->update_action);
+$is_delete_action = $product_id && isset($obj->delete_action);
 
 
 // ===================================================================
 // R - READ (Fetch Products + Full Image URL)
 // ===================================================================
+// R - READ (Fetch Products + Full Image URL)
+// ===================================================================
 if ($method === 'POST' && $is_read_action) {
 
-    if (empty($company_id)) {
-        $output["head"]["code"] = 400;
-        $output["head"]["msg"] = "Company ID is required.";
-        goto end_script;
-    }
-
     $select_cols = "p.*, u.unit_name, c.category_name";
+    
+    // FIX: Joined on unit_id and category_id instead of numeric id
     $from_tables = "`product` p 
-                    LEFT JOIN `unit` u ON p.unit_id = u.id AND u.deleted_at = 0
-                    LEFT JOIN `category` c ON p.category_id = c.id AND c.deleted_at = 0";
-    $where_clause = "p.company_id = ? AND p.deleted_at = 0 AND p.status = 0";
+                    LEFT JOIN `unit` u ON p.unit_id = u.unit_id AND u.deleted_at = 0
+                    LEFT JOIN `category` c ON p.category_id = c.category_id AND c.deleted_at = 0";
+    
+    // Ensure these flags match your database values
+    $where_clause = "p.deleted_at = 0 AND p.status = 0";
 
-    if (isset($obj->id) && $obj->id !== null) {
+    if (isset($obj->id) && $obj->id !== null && $obj->id !== '') {
         $sql = "SELECT {$select_cols} FROM {$from_tables} WHERE {$where_clause} AND p.id = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ii", $company_id, $id);
-    } else if (isset($obj->product_id) && $obj->product_id !== null) {
+        $stmt->bind_param("i", $id);
+    } else if (isset($obj->product_id) && $obj->product_id !== null && $obj->product_id !== '') {
         $sql = "SELECT {$select_cols} FROM {$from_tables} WHERE {$where_clause} AND p.product_id = ?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("is", $company_id, $product_id);
+        $stmt->bind_param("s", $product_id);
     } else {
+        // Fetch All
         $sql = "SELECT {$select_cols} FROM {$from_tables} WHERE {$where_clause} ORDER BY p.product_name ASC";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("i", $company_id);
     }
 
     $stmt->execute();
@@ -110,9 +108,9 @@ else if ($method === 'POST' && $is_create_action) {
         goto end_script;
     }
 
-    // Check duplicate product_code
-    $check = $conn->prepare("SELECT id FROM product WHERE product_code = ? AND company_id = ? AND deleted_at = 0");
-    $check->bind_param("si", $product_code, $company_id);
+    // Check duplicate product_code (Global)
+    $check = $conn->prepare("SELECT id FROM product WHERE product_code = ? AND deleted_at = 0");
+    $check->bind_param("s", $product_code);
     $check->execute();
     if ($check->get_result()->num_rows > 0) {
         $output["head"]["code"] = 400;
@@ -144,15 +142,14 @@ else if ($method === 'POST' && $is_create_action) {
     $new_arrival = $new_arrival ?? 0;
 
     $stmt = $conn->prepare("INSERT INTO `product` 
-        (`product_id`, `company_id`, `product_name`, `product_img`, `product_code`, `unit_id`, `category_id`, 
+        (`product_id`, `product_name`, `product_img`, `product_code`, `unit_id`, `category_id`, 
          `product_details`, `product_price`, `product_with_discount_price`, `product_stock`, `product_disc_amt`, 
          `discount_lock`, `new_arrival`, `status`, `created_by`, `created_name`) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
     $stmt->bind_param(
-        "ssssssssddddsssss",
+        "sssssssddddsssss",
         $new_product_id,
-        $company_id,
         $product_name,
         $savedImageName,
         $product_code,
@@ -194,8 +191,8 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
     }
 
     // Check duplicate code (exclude current product)
-    $check = $conn->prepare("SELECT id FROM product WHERE product_code = ? AND company_id = ? AND product_id != ? AND deleted_at = 0");
-    $check->bind_param("sss", $product_code, $company_id, $product_id);
+    $check = $conn->prepare("SELECT id FROM product WHERE product_code = ? AND product_id != ? AND deleted_at = 0");
+    $check->bind_param("ss", $product_code, $product_id);
     $check->execute();
     if ($check->get_result()->num_rows > 0) {
         $output["head"]["code"] = 400;
@@ -206,9 +203,9 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
     $check->close();
 
     // Fetch current product
-    $fetch_sql = "SELECT * FROM `product` WHERE `product_id` = ? AND `company_id` = ? AND `deleted_at` = 0 AND `status` = 0";
+    $fetch_sql = "SELECT * FROM `product` WHERE `product_id` = ? AND `deleted_at` = 0 AND `status` = 0";
     $fetch_stmt = $conn->prepare($fetch_sql);
-    $fetch_stmt->bind_param("ss", $product_id, $company_id);
+    $fetch_stmt->bind_param("s", $product_id);
     $fetch_stmt->execute();
     $fetch_result = $fetch_stmt->get_result();
     if ($fetch_result->num_rows === 0) {
@@ -280,10 +277,9 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
     }
 
     $setClause = implode(", ", $sets);
-    $sql = "UPDATE `product` SET $setClause WHERE `product_id` = ? AND `company_id` = ?";
+    $sql = "UPDATE `product` SET $setClause WHERE `product_id` = ?";
     $params[] = $product_id;
-    $params[] = $company_id;
-    $types .= "si";
+    $types .= "s";
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param($types, ...$params);
@@ -308,10 +304,10 @@ else if (($method === 'POST' || $method === 'DELETE') && $is_delete_action) {
 
     // Perform Soft Delete
     $delete_sql = "UPDATE `product` SET `deleted_at` = 1 
-                   WHERE `product_id` = ? AND `company_id` = ?";
+                   WHERE `product_id` = ?";
 
     $delete_stmt = $conn->prepare($delete_sql);
-    $delete_stmt->bind_param("si", $product_id, $company_id);
+    $delete_stmt->bind_param("s", $product_id);
 
     if ($delete_stmt->execute()) {
         if ($delete_stmt->affected_rows > 0) {
