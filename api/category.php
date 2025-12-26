@@ -26,40 +26,33 @@ $method = $_SERVER['REQUEST_METHOD'];
 $category_name = isset($input->category_name) ? trim($input->category_name) : null;
 $category_id = isset($input->category_id) ? $input->category_id : null;
 $category_img = isset($input->category_img) ? $input->category_img : null;
-$company_id = isset($input->company_id) ? trim($input->company_id) : null;
 $user_id = isset($input->user_id) ? $input->user_id : null;
 $created_name = isset($input->created_name) ? $input->created_name : null;
 
 // Action flags
 $is_read_action = isset($input->fetch_all) || (isset($input->category_id) && !isset($input->update_action) && !isset($input->delete_action));
-$is_create_action = $category_name && $company_id && !isset($input->category_id) && !isset($input->update_action) && !isset($input->delete_action);
-$is_update_action = $category_id && $company_id && isset($input->update_action);
-$is_delete_action = $category_id && $company_id && isset($input->delete_action);
+$is_create_action = $category_name && !isset($input->category_id) && !isset($input->update_action) && !isset($input->delete_action);
+$is_update_action = $category_id && isset($input->update_action);
+$is_delete_action = $category_id && isset($input->delete_action);
 
 // =========================================================================
 // R - READ (LIST/FETCH)
 // =========================================================================
 if ($method === 'POST' && $is_read_action) {
-    if (empty($company_id)) {
-        $output["head"]["code"] = 400;
-        $output["head"]["msg"] = "Company ID is required to fetch categories.";
-        goto end_script;
-    }
 
-    if (!empty($category_id)) {  // Changed: Use !empty() to treat empty string/null/whitespace as "fetch all"
+    if (!empty($category_id)) {
         // FETCH SINGLE CATEGORY
-        $sql = "SELECT `id`, `category_id`, `category_name`, `category_img`, `company_id`, `created_at` 
+        $sql = "SELECT `id`, `category_id`, `category_name`, `category_img`, `created_at` 
                 FROM `category` 
-                WHERE `category_id` = ? AND `company_id` = ? AND `deleted_at` = 0";
+                WHERE `category_id` = ? AND `deleted_at` = 0";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ss", $category_id, $company_id);
+        $stmt->bind_param("s", $category_id);
     } else {
-        // FETCH ALL CATEGORIES for a company
-        $sql = "SELECT `id`, `category_id`, `category_name`, `category_img`, `company_id`, `created_at` 
+        // FETCH ALL CATEGORIES
+        $sql = "SELECT `id`, `category_id`, `category_name`, `category_img`, `created_at` 
                 FROM `category` 
-                WHERE `company_id` = ? AND `deleted_at` = 0 ORDER BY `category_name` ASC";
+                WHERE `deleted_at` = 0 ORDER BY `category_name` ASC";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $company_id);
     }
 
     $stmt->execute();
@@ -92,29 +85,29 @@ if ($method === 'POST' && $is_read_action) {
 // =========================================================================
 else if ($method === 'POST' && $is_create_action) {
 
-    if (!empty($category_name) && !empty($company_id)) {
+    if (!empty($category_name)) {
 
-        // 1. Check if Category name already exists (Duplicate prevention)
-        $check_sql = "SELECT `id` FROM `category` WHERE `category_name` = ? AND `company_id` = ? AND `deleted_at` = 0";
+        // 1. Check if Category name already exists
+        $check_sql = "SELECT `id` FROM `category` WHERE `category_name` = ? AND `deleted_at` = 0";
         $check_stmt = $conn->prepare($check_sql);
-        $check_stmt->bind_param("ss", $category_name, $company_id);
+        $check_stmt->bind_param("s", $category_name);
         $check_stmt->execute();
         $check_result = $check_stmt->get_result();
 
         if ($check_result->num_rows > 0) {
             $output["head"]["code"] = 400;
-            $output["head"]["msg"] = "Category name '$category_name' already exists for this company.";
+            $output["head"]["msg"] = "Category name '$category_name' already exists.";
             $check_stmt->close();
             goto end_script;
         }
         $check_stmt->close();
 
-        // Generate unique category_id using the function
+        // Generate unique category_id
         $next_id_result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM `category`");
         $next_auto_id = $next_id_result->fetch_assoc()['next_id'];
         $category_id = uniqueID('CATEGORY', $next_auto_id);
 
-        // Double-check if generated category_id already exists (unlikely, but safe)
+        // Double-check if generated category_id exists
         $id_check = $conn->prepare("SELECT 1 FROM `category` WHERE `category_id` = ?");
         $id_check->bind_param("s", $category_id);
         $id_check->execute();
@@ -130,17 +123,15 @@ else if ($method === 'POST' && $is_create_action) {
         $uploadDir = "../uploads/categories/";
         $savedImageName = saveBase64Image($category_img, $uploadDir);
 
-        // 2. Insert the new Category record
-        $insert_sql = "INSERT INTO `category` (`category_id`, `category_name`, `category_img`, `company_id`, `created_by`, `created_name`, `created_at`) 
-                       VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        $insert_sql = "INSERT INTO `category` (`category_id`, `category_name`, `category_img`, `created_by`, `created_name`, `created_at`) 
+                       VALUES (?, ?, ?, ?, ?, NOW())";
 
         $insert_stmt = $conn->prepare($insert_sql);
         $insert_stmt->bind_param(
-            "ssssss",
+            "sssss",
             $category_id,
             $category_name,
             $savedImageName,
-            $company_id,
             $user_id,
             $created_name
         );
@@ -159,7 +150,7 @@ else if ($method === 'POST' && $is_create_action) {
         $insert_stmt->close();
     } else {
         $output["head"]["code"] = 400;
-        $output["head"]["msg"] = "Category Name and Company ID are required.";
+        $output["head"]["msg"] = "Category Name is required.";
     }
     goto end_script;
 }
@@ -168,12 +159,12 @@ else if ($method === 'POST' && $is_create_action) {
 // =========================================================================
 else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
 
-    if (!empty($category_id) && !empty($company_id)) {
+    if (!empty($category_id)) {
 
         // Fetch current category
-        $fetch_sql = "SELECT * FROM `category` WHERE `category_id` = ? AND `company_id` = ? AND `deleted_at` = 0";
+        $fetch_sql = "SELECT * FROM `category` WHERE `category_id` = ? AND `deleted_at` = 0";
         $fetch_stmt = $conn->prepare($fetch_sql);
-        $fetch_stmt->bind_param("ss", $category_id, $company_id);
+        $fetch_stmt->bind_param("s", $category_id);
         $fetch_stmt->execute();
         $fetch_result = $fetch_stmt->get_result();
         if ($fetch_result->num_rows === 0) {
@@ -185,11 +176,11 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
         $current = $fetch_result->fetch_assoc();
         $fetch_stmt->close();
 
-        // Check for duplicate category name (excluding current) if name is provided and changed
+        // Check for duplicate category name
         if (!empty($category_name) && $category_name !== $current['category_name']) {
-            $check_sql = "SELECT `id` FROM `category` WHERE `category_name` = ? AND `company_id` = ? AND `category_id` != ? AND `deleted_at` = 0";
+            $check_sql = "SELECT `id` FROM `category` WHERE `category_name` = ? AND `category_id` != ? AND `deleted_at` = 0";
             $check_stmt = $conn->prepare($check_sql);
-            $check_stmt->bind_param("sss", $category_name, $company_id, $category_id);
+            $check_stmt->bind_param("ss", $category_name, $category_id);
             $check_stmt->execute();
             $check_result = $check_stmt->get_result();
 
@@ -232,7 +223,6 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
             }
         }
 
-        // Handle image update separately
         if ($include_image_update) {
             $sets[] = "`category_img` = ?";
             $params[] = $finalImageName;
@@ -246,10 +236,9 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
         }
 
         $setClause = implode(", ", $sets);
-        $sql = "UPDATE `category` SET $setClause WHERE `category_id` = ? AND `company_id` = ?";
+        $sql = "UPDATE `category` SET $setClause WHERE `category_id` = ?";
         $params[] = $category_id;
-        $params[] = $company_id;
-        $types .= "ss";
+        $types .= "s";
 
         $update_stmt = $conn->prepare($sql);
         $update_stmt->bind_param($types, ...$params);
@@ -272,7 +261,7 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
         $update_stmt->close();
     } else {
         $output["head"]["code"] = 400;
-        $output["head"]["msg"] = "Category ID and Company ID are required for update.";
+        $output["head"]["msg"] = "Category ID is required for update.";
     }
     goto end_script;
 }
@@ -281,12 +270,11 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
 // =========================================================================
 else if (($method === 'POST' || $method === 'DELETE') && $is_delete_action) {
 
-    // Perform Soft Delete
     $delete_sql = "UPDATE `category` SET `deleted_at` = 1 
-                   WHERE `category_id` = ? AND `company_id` = ? AND `deleted_at` = 0";
+                   WHERE `category_id` = ? AND `deleted_at` = 0";
 
     $delete_stmt = $conn->prepare($delete_sql);
-    $delete_stmt->bind_param("ss", $category_id, $company_id);
+    $delete_stmt->bind_param("s", $category_id);
 
     if ($delete_stmt->execute()) {
         if ($delete_stmt->affected_rows > 0) {
@@ -303,16 +291,11 @@ else if (($method === 'POST' || $method === 'DELETE') && $is_delete_action) {
     $delete_stmt->close();
     goto end_script;
 }
-// =========================================================================
-// Mismatch / Fallback
-// =========================================================================
 else {
     $output["head"]["code"] = 400;
     $output["head"]["msg"] = "Parameter or request method is Mismatch for the operation requested.";
 }
 
 end_script:
-// Close the database connection at the end
 $conn->close();
-
 echo json_encode($output, JSON_NUMERIC_CHECK);
