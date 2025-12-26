@@ -71,10 +71,10 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
         $verifyResult = $stmtVerify->get_result();
         if ($verifyResult->num_rows > 0) {
             // Mark as used (soft delete)
-            $stmtUsed = $conn->prepare("UPDATE email_verification SET deleted_at = 1 WHERE email_id = ? AND otp = ?");
-            $stmtUsed->bind_param('ss', $email_id, $input_otp);
-            $stmtUsed->execute();
-            $stmtUsed->close();
+            // $stmtUsed = $conn->prepare("UPDATE email_verification SET deleted_at = 1 WHERE email_id = ? AND otp = ?");
+            // $stmtUsed->bind_param('ss', $email_id, $input_otp);
+            // $stmtUsed->execute();
+            // $stmtUsed->close();
 
             // Create partial customer (email only)
             // Check if email already exists
@@ -86,8 +86,16 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
             $stmtEmailCheck->close();
 
             if ($email_exists) {
-                $output["head"]["code"] = 400;
-                $output["head"]["msg"] = "Email already registered.";
+              $stmtNew = $conn->prepare("SELECT * FROM customers WHERE email_id = ? AND deleted_at = 0");
+                $stmtNew->bind_param('s', $email_id);
+                $stmtNew->execute();
+                $resultNew = $stmtNew->get_result();
+                $newCustomer = $resultNew->fetch_assoc();
+                $stmtNew->close();
+
+                $output["head"]["code"] = 200;
+                $output["head"]["msg"] = "OTP verified. Login successful.";
+                $output["body"]["customer"] = $newCustomer;
             } else {
                 // Get next sequential ID for customer_no
                 $sql_count = "SELECT COUNT(*) as cnt FROM customers WHERE deleted_at = 0";
@@ -185,7 +193,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
                         $dob = DateTime::createFromFormat('Y-m-d', $date_of_birth);
                         $dob_valid = $dob && $dob->format('Y-m-d') === $date_of_birth;
                     }
-                    $gender_valid = !$gender || in_array($gender, ['M', 'F', 'O', 'Male', 'Female', 'Other']);
+                    $gender_valid = !$gender || in_array($gender, [ 'Male', 'Female', 'Other']);
                     $address_valid = !$delivery_address || !preg_match('/[^a-zA-Z0-9., ]+/', $delivery_address); // Basic alphanumeric check
                     $wishlist_valid = !$wishlist_products || is_string($wishlist_products); // Assume JSON string
 
@@ -219,10 +227,19 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
                                         $email_check = $email_check_result->num_rows > 0;
                                         $stmtEmailCheck->close();
                                     }
-
+if ($oldCustomer['phone_number'] !== $phone_number) {
+    $stmtPhoneCheck = $conn->prepare("SELECT id FROM customers WHERE phone_number = ? AND deleted_at = 0 AND customer_id != ?");
+    $stmtPhoneCheck->bind_param('ss', $phone_number, $edit_id);
+    $stmtPhoneCheck->execute();
+    $phone_check = $stmtPhoneCheck->get_result()->num_rows > 0;
+    $stmtPhoneCheck->close();
+}
                                     if ($email_check) {
                                         $output["head"]["code"] = 400;
                                         $output["head"]["msg"] = "Email already in use.";
+                                        } elseif ($phone_check) {
+    $output["head"]["code"] = 400;
+    $output["head"]["msg"] = "Phone number already in use.";
                                     } else {
 
                                         // Build dynamic update query for optional fields
@@ -380,7 +397,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
                         }
                     } else {
                         $output["head"]["code"] = 400;
-                        $output["head"]["msg"] = "Invalid optional fields (date_of_birth format: YYYY-MM-DD, gender: M/F/O, address/wishlist: alphanumeric).";
+                        $output["head"]["msg"] = "Invalid optional fields (date_of_birth format: YYYY-MM-DD, gender: Male/Female/Other, address/wishlist: alphanumeric).";
                     }
                 } else {
                     $output["head"]["code"] = 400;
