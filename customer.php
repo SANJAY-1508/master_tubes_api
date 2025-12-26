@@ -17,9 +17,129 @@ $output = array();
 date_default_timezone_set('Asia/Calcutta');
 $timestamp = date('Y-m-d H:i:s');
 
+if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id)) {
+    $email_id = $obj->email_id;
 
+    if (filter_var($email_id, FILTER_VALIDATE_EMAIL)) {
+        // Check if recent OTP exists for this email (prevent spam, e.g., last 1 min)
+        $stmtCheck = $conn->prepare("SELECT id FROM email_verification WHERE email_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE) AND deleted_at = 0");
+        $stmtCheck->bind_param('s', $email_id);
+        $stmtCheck->execute();
+        $checkResult = $stmtCheck->get_result();
+        if ($checkResult->num_rows > 0) {
+            $output["head"]["code"] = 400;
+            $output["head"]["msg"] = "OTP already sent recently. Please wait.";
+        } else {
+            // Generate 4-digit OTP
+            $otp = sprintf("%04d", mt_rand(1, 9999));
+            $otp_expiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
 
-if (isset($obj->search_text)) {
+            // Get next sequential for email_verification_id
+            $sql_count = "SELECT COUNT(*) as cnt FROM email_verification WHERE deleted_at = 0";
+            $result_count = $conn->query($sql_count);
+            $row_count = $result_count->fetch_assoc();
+            $next_seq = (int)$row_count['cnt'] + 1;
+            $email_verification_id = "mas_tub_email_" . sprintf("%03d", $next_seq);
+
+            // Insert into email_verification
+            $stmtInsert = $conn->prepare("INSERT INTO email_verification (`email_verification_id`, `email_id`, `otp`, `otp_expiry`, `created_at`, `deleted_at`) VALUES (?, ?, ?, ?, ?, 0)");
+            $stmtInsert->bind_param('sssss', $email_verification_id, $email_id, $otp, $otp_expiry, $timestamp); // Fixed bind_param types
+            if ($stmtInsert->execute()) {
+                $stmtInsert->close();
+                $output["head"]["code"] = 200;
+                $output["head"]["msg"] = "OTP sent successfully";
+                $output["body"]["otp"] = $otp; // Returned to frontend for EmailJS sending
+            } else {
+                $output["head"]["code"] = 400;
+                $output["head"]["msg"] = "Failed to generate OTP: " . $conn->error;
+            }
+        }
+        $stmtCheck->close();
+    } else {
+        $output["head"]["code"] = 400;
+        $output["head"]["msg"] = "Invalid Email.";
+    }
+} elseif (isset($obj->action) && $obj->action === 'verify_otp' && isset($obj->email_id) && isset($obj->otp)) {
+    $email_id = $obj->email_id;
+    $input_otp = $obj->otp;
+
+    if (filter_var($email_id, FILTER_VALIDATE_EMAIL) && ctype_digit($input_otp) && strlen($input_otp) === 4) {
+        // Verify OTP
+        $stmtVerify = $conn->prepare("SELECT id FROM email_verification WHERE email_id = ? AND otp = ? AND otp_expiry > NOW() AND deleted_at = 0");
+        $stmtVerify->bind_param('ss', $email_id, $input_otp);
+        $stmtVerify->execute();
+        $verifyResult = $stmtVerify->get_result();
+        if ($verifyResult->num_rows > 0) {
+            // Mark as used (soft delete)
+            $stmtUsed = $conn->prepare("UPDATE email_verification SET deleted_at = 1 WHERE email_id = ? AND otp = ?");
+            $stmtUsed->bind_param('ss', $email_id, $input_otp);
+            $stmtUsed->execute();
+            $stmtUsed->close();
+
+            // Create partial customer (email only)
+            // Check if email already exists
+            $stmtEmailCheck = $conn->prepare("SELECT id FROM customers WHERE email_id = ? AND deleted_at = 0");
+            $stmtEmailCheck->bind_param('s', $email_id);
+            $stmtEmailCheck->execute();
+            $email_check_result = $stmtEmailCheck->get_result();
+            $email_exists = $email_check_result->num_rows > 0;
+            $stmtEmailCheck->close();
+
+            if ($email_exists) {
+                $output["head"]["code"] = 400;
+                $output["head"]["msg"] = "Email already registered.";
+            } else {
+                // Get next sequential ID for customer_no
+                $sql_count = "SELECT COUNT(*) as cnt FROM customers WHERE deleted_at = 0";
+                $result_count = $conn->query($sql_count);
+                $row_count = $result_count->fetch_assoc();
+                $next_seq = (int)$row_count['cnt'] + 1;
+                $customer_no = "mas_tub_cus_" . sprintf("%03d", $next_seq);
+
+                // Generate unique customer_id (assuming uniqueID function exists; fallback to uniqid if not)
+                if (function_exists('uniqueID')) {
+                    $customer_id = uniqueID("mas_tub_cus", $next_seq);
+                } else {
+                    $customer_id = "mas_tub_cus_" . uniqid();
+                }
+
+                // Partial insert: set empty values for required fields
+                $first_name = '';
+                $last_name = '';
+                $phone_number = '';
+                $insert_sql = "INSERT INTO customers (`customer_id`, `customer_no`, `first_name`, `last_name`, `phone_number`, `email_id`, `created_at`, `deleted_at`) VALUES (?, ?, ?, ?, ?, ?, ?, 0)";
+                $stmtInsert = $conn->prepare($insert_sql);
+                $stmtInsert->bind_param('sssssss', $customer_id, $customer_no, $first_name, $last_name, $phone_number, $email_id, $timestamp);
+                if ($stmtInsert->execute()) {
+                    $stmtInsert->close();
+
+                    // Fetch new customer
+                    $internal_id = $conn->insert_id;
+                    $stmtNew = $conn->prepare("SELECT * FROM customers WHERE id = ?");
+                    $stmtNew->bind_param('i', $internal_id);
+                    $stmtNew->execute();
+                    $resultNew = $stmtNew->get_result();
+                    $newCustomer = $resultNew->fetch_assoc();
+                    $stmtNew->close();
+
+                    $output["head"]["code"] = 200;
+                    $output["head"]["msg"] = "OTP verified. Customer created.";
+                    $output["body"]["customer"] = $newCustomer;
+                } else {
+                    $output["head"]["code"] = 400;
+                    $output["head"]["msg"] = "Failed to create customer: " . $conn->error;
+                }
+            }
+        } else {
+            $output["head"]["code"] = 400;
+            $output["head"]["msg"] = "Invalid or expired OTP.";
+        }
+        $stmtVerify->close();
+    } else {
+        $output["head"]["code"] = 400;
+        $output["head"]["msg"] = "Invalid input.";
+    }
+} elseif (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list customers =====================>>>>>>>>>>
     $search_text = $obj->search_text;
     $sql = "SELECT * FROM `customers` 
@@ -167,7 +287,7 @@ if (isset($obj->search_text)) {
                                 $output["head"]["msg"] = "Customer not found.";
                             }
                         } else {
-                            // Creation logic
+                            // Creation logic (full create)
                             // Check if email already exists
                             $stmtEmailCheck = $conn->prepare("SELECT id FROM customers WHERE email_id = ? AND deleted_at = 0");
                             $stmtEmailCheck->bind_param('s', $email_id);
@@ -188,7 +308,11 @@ if (isset($obj->search_text)) {
                                 $customer_no = "mas_tub_cus_" . sprintf("%03d", $next_seq);
 
                                 // Generate unique customer_id
-                                $customer_id = uniqueID("mas_tub_cus", $next_seq);
+                                if (function_exists('uniqueID')) {
+                                    $customer_id = uniqueID("mas_tub_cus", $next_seq);
+                                } else {
+                                    $customer_id = "mas_tub_cus_" . uniqid();
+                                }
 
                                 // Build dynamic insert for optional fields
                                 $insert_fields = [
