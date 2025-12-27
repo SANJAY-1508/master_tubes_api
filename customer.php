@@ -86,7 +86,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
             $stmtEmailCheck->close();
 
             if ($email_exists) {
-              $stmtNew = $conn->prepare("SELECT * FROM customers WHERE email_id = ? AND deleted_at = 0");
+                $stmtNew = $conn->prepare("SELECT * FROM customers WHERE email_id = ? AND deleted_at = 0");
                 $stmtNew->bind_param('s', $email_id);
                 $stmtNew->execute();
                 $resultNew = $stmtNew->get_result();
@@ -168,42 +168,33 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
         $output["body"]["customer"] = [];
     }
 } elseif (isset($obj->first_name) && isset($obj->last_name) && isset($obj->phone_number) && isset($obj->email_id)) {
-
     $first_name = $obj->first_name;
     $last_name = $obj->last_name;
     $phone_number = $obj->phone_number;
     $email_id = $obj->email_id;
-
     // Optional fields
     $date_of_birth = isset($obj->date_of_birth) ? $obj->date_of_birth : null;
     $gender = isset($obj->gender) ? $obj->gender : null;
     $delivery_address = isset($obj->delivery_address) ? $obj->delivery_address : null;
     $wishlist_products = isset($obj->wishlist_products) ? $obj->wishlist_products : null;
-
     if (!empty($first_name) && !empty($last_name) && !empty($phone_number) && !empty($email_id)) {
-
         $full_name = $first_name . ' ' . $last_name;
         if (!preg_match('/[^a-zA-Z0-9., ]+/', $full_name)) {
             if (ctype_digit($phone_number) && strlen($phone_number) == 10) {
                 if (filter_var($email_id, FILTER_VALIDATE_EMAIL)) {
-
                     // Validate optional fields if provided
                     $dob_valid = true;
                     if ($date_of_birth) {
                         $dob = DateTime::createFromFormat('Y-m-d', $date_of_birth);
                         $dob_valid = $dob && $dob->format('Y-m-d') === $date_of_birth;
                     }
-                    $gender_valid = !$gender || in_array($gender, [ 'Male', 'Female', 'Other']);
+                    $gender_valid = !$gender || in_array($gender, ['Male', 'Female', 'Other']);
                     $address_valid = !$delivery_address || !preg_match('/[^a-zA-Z0-9., ]+/', $delivery_address); // Basic alphanumeric check
                     $wishlist_valid = !$wishlist_products || is_string($wishlist_products); // Assume JSON string
-
                     if ($dob_valid && $gender_valid && $address_valid && $wishlist_valid) {
-
                         if (isset($obj->edit_customer_id)) {
                             $edit_id = $obj->edit_customer_id;
-
                             if ($edit_id) {
-
                                 // Fetch Old Data
                                 $stmtOld = $conn->prepare("SELECT * FROM customers WHERE customer_id = ? AND deleted_at = 0");
                                 $stmtOld->bind_param('s', $edit_id);
@@ -211,14 +202,13 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
                                 $resultOld = $stmtOld->get_result();
                                 $oldCustomer = $resultOld->fetch_assoc();
                                 $stmtOld->close();
-
                                 if (!$oldCustomer) {
                                     $output["head"]["code"] = 400;
                                     $output["head"]["msg"] = "Customer not found.";
                                 } else {
-
                                     // Check if new email is unique (if changed)
                                     $email_check = false;
+                                    $phone_check = false; // Initialize phone_check to false
                                     if ($oldCustomer['email_id'] !== $email_id) {
                                         $stmtEmailCheck = $conn->prepare("SELECT id FROM customers WHERE email_id = ? AND deleted_at = 0 AND customer_id != ?");
                                         $stmtEmailCheck->bind_param('ss', $email_id, $edit_id);
@@ -227,21 +217,20 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
                                         $email_check = $email_check_result->num_rows > 0;
                                         $stmtEmailCheck->close();
                                     }
-if ($oldCustomer['phone_number'] !== $phone_number) {
-    $stmtPhoneCheck = $conn->prepare("SELECT id FROM customers WHERE phone_number = ? AND deleted_at = 0 AND customer_id != ?");
-    $stmtPhoneCheck->bind_param('ss', $phone_number, $edit_id);
-    $stmtPhoneCheck->execute();
-    $phone_check = $stmtPhoneCheck->get_result()->num_rows > 0;
-    $stmtPhoneCheck->close();
-}
+                                    if ($oldCustomer['phone_number'] !== $phone_number) {
+                                        $stmtPhoneCheck = $conn->prepare("SELECT id FROM customers WHERE phone_number = ? AND deleted_at = 0 AND customer_id != ?");
+                                        $stmtPhoneCheck->bind_param('ss', $phone_number, $edit_id);
+                                        $stmtPhoneCheck->execute();
+                                        $phone_check = $stmtPhoneCheck->get_result()->num_rows > 0;
+                                        $stmtPhoneCheck->close();
+                                    }
                                     if ($email_check) {
                                         $output["head"]["code"] = 400;
                                         $output["head"]["msg"] = "Email already in use.";
-                                        } elseif ($phone_check) {
-    $output["head"]["code"] = 400;
-    $output["head"]["msg"] = "Phone number already in use.";
+                                    } elseif ($phone_check) {
+                                        $output["head"]["code"] = 400;
+                                        $output["head"]["msg"] = "Phone number already in use.";
                                     } else {
-
                                         // Build dynamic update query for optional fields
                                         $update_fields = [
                                             "first_name = ?",
@@ -250,7 +239,6 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                             "email_id = ?"
                                         ];
                                         $update_params = [$first_name, $last_name, $phone_number, $email_id];
-
                                         if ($date_of_birth) {
                                             $update_fields[] = "date_of_birth = ?";
                                             $update_params[] = $date_of_birth;
@@ -267,16 +255,13 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                             $update_fields[] = "wishlist_products = ?";
                                             $update_params[] = $wishlist_products;
                                         }
-
                                         $updateCustomer = "UPDATE customers SET " . implode(', ', $update_fields) . " WHERE customer_id = ?";
                                         $update_params[] = $edit_id;
-
                                         $stmtUpdate = $conn->prepare($updateCustomer);
                                         if ($stmtUpdate) {
                                             $stmtUpdate->bind_param(str_repeat('s', count($update_params)), ...$update_params);
                                             if ($stmtUpdate->execute()) {
                                                 $stmtUpdate->close();
-
                                                 // Fetch new data using internal id
                                                 $internal_id = $oldCustomer['id'];
                                                 $stmtNew = $conn->prepare("SELECT * FROM customers WHERE id = ?");
@@ -285,7 +270,6 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                                 $resultNew = $stmtNew->get_result();
                                                 $newCustomer = $resultNew->fetch_assoc();
                                                 $stmtNew->close();
-
                                                 $output["head"]["code"] = 200;
                                                 $output["head"]["msg"] = "Successfully Customer Details Updated";
                                                 $output["body"]["customer"] = $newCustomer; // Added for consistency
@@ -312,7 +296,6 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                             $email_check_result = $stmtEmailCheck->get_result();
                             $email_exists = $email_check_result->num_rows > 0;
                             $stmtEmailCheck->close();
-
                             if ($email_exists) {
                                 $output["head"]["code"] = 400;
                                 $output["head"]["msg"] = "Email already in use.";
@@ -323,14 +306,12 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                 $row_count = $result_count->fetch_assoc();
                                 $next_seq = (int)$row_count['cnt'] + 1;
                                 $customer_no = "mas_tub_cus_" . sprintf("%03d", $next_seq);
-
                                 // Generate unique customer_id
                                 if (function_exists('uniqueID')) {
                                     $customer_id = uniqueID("mas_tub_cus", $next_seq);
                                 } else {
                                     $customer_id = "mas_tub_cus_" . uniqid();
                                 }
-
                                 // Build dynamic insert for optional fields
                                 $insert_fields = [
                                     "`customer_id`",
@@ -344,7 +325,6 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                 ];
                                 $insert_placeholders = ["?", "?", "?", "?", "?", "?", "?", "0"];
                                 $insert_params = [$customer_id, $customer_no, $first_name, $last_name, $phone_number, $email_id, $timestamp];
-
                                 if ($date_of_birth) {
                                     $insert_fields[] = "`date_of_birth`";
                                     $insert_placeholders[] = "?";
@@ -365,14 +345,12 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                     $insert_placeholders[] = "?";
                                     $insert_params[] = $wishlist_products;
                                 }
-
                                 $insert_sql = "INSERT INTO customers (" . implode(', ', $insert_fields) . ") VALUES (" . implode(', ', $insert_placeholders) . ")";
                                 $stmtInsert = $conn->prepare($insert_sql);
                                 if ($stmtInsert) {
                                     $stmtInsert->bind_param(str_repeat('s', count($insert_params)), ...$insert_params);
                                     if ($stmtInsert->execute()) {
                                         $stmtInsert->close();
-
                                         // Fetch new data using last insert id
                                         $internal_id = $conn->insert_id;
                                         $stmtNew = $conn->prepare("SELECT * FROM customers WHERE id = ?");
@@ -381,7 +359,6 @@ if ($oldCustomer['phone_number'] !== $phone_number) {
                                         $resultNew = $stmtNew->get_result();
                                         $newCustomer = $resultNew->fetch_assoc();
                                         $stmtNew->close();
-
                                         $output["head"]["code"] = 200;
                                         $output["head"]["msg"] = "Successfully Customer Created";
                                         $output["body"]["customer"] = $newCustomer;
