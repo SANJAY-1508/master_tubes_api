@@ -163,7 +163,8 @@ elseif (isset($obj->search_text)) {
         $output["head"]["msg"] = "Customer Details Not Found";
         $output["body"]["customer"] = [];
     }
-} elseif (isset($obj->first_name) && isset($obj->last_name) && isset($obj->phone_number) && isset($obj->email_id)) {
+// } elseif (isset($obj->first_name) && isset($obj->last_name) && isset($obj->phone_number) && isset($obj->email_id)) {
+} elseif (isset($obj->first_name) && isset($obj->phone_number) && isset($obj->email_id)) {
     $first_name = $obj->first_name;
     $last_name = $obj->last_name;
     $phone_number = $obj->phone_number;
@@ -173,8 +174,10 @@ elseif (isset($obj->search_text)) {
     $gender = isset($obj->gender) ? $obj->gender : null;
     $delivery_address = isset($obj->delivery_address) ? $obj->delivery_address : null;
     $wishlist_products = isset($obj->wishlist_products) ? $obj->wishlist_products : null;
-    if (!empty($first_name) && !empty($last_name) && !empty($phone_number) && !empty($email_id)) {
-        $full_name = $first_name . ' ' . $last_name;
+    // if (!empty($first_name) && !empty($last_name) && !empty($phone_number) && !empty($email_id)) {
+    if (!empty($first_name) && !empty($phone_number) && !empty($email_id)) {
+        // $full_name = $first_name . ' ' . $last_name;
+        $full_name = trim($first_name . ' ' . ($last_name ?? ''));
         if (!preg_match('/[^a-zA-Z0-9., ]+/', $full_name)) {
             if (ctype_digit($phone_number) && strlen($phone_number) == 10) {
                 if (filter_var($email_id, FILTER_VALIDATE_EMAIL)) {
@@ -184,9 +187,13 @@ elseif (isset($obj->search_text)) {
                         $dob = DateTime::createFromFormat('Y-m-d', $date_of_birth);
                         $dob_valid = $dob && $dob->format('Y-m-d') === $date_of_birth;
                     }
-                    $gender_valid = !$gender || in_array($gender, ['Male', 'Female', 'Other']);
-                    $address_valid = !$delivery_address || !preg_match('/[^a-zA-Z0-9., ]+/', $delivery_address); // Basic alphanumeric check
-                    $wishlist_valid = !$wishlist_products || is_string($wishlist_products); // Assume JSON string
+                    // $gender_valid = !$gender || in_array($gender, ['Male', 'Female', 'Other']);
+                    // $address_valid = !$delivery_address || !preg_match('/[^a-zA-Z0-9., ]+/', $delivery_address);
+                    // $wishlist_valid = !$wishlist_products || is_string($wishlist_products);
+                    // if ($dob_valid && $gender_valid && $address_valid && $wishlist_valid) {
+                                        $gender_valid = !$gender || in_array($gender, ['Male', 'Female', 'Other']);
+                    $address_valid = true;  // Allow any characters in address (common in real addresses)
+                    $wishlist_valid = !$wishlist_products || is_string($wishlist_products);
                     if ($dob_valid && $gender_valid && $address_valid && $wishlist_valid) {
                         if (isset($obj->edit_customer_id)) {
                             $edit_id = $obj->edit_customer_id;
