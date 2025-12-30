@@ -60,37 +60,6 @@ if (isset($obj->search_text)) {
                 $is_edit = isset($obj->edit_user_id);
                 $edit_id = $is_edit ? $obj->edit_user_id : null;
 
-                // Check username uniqueness
-                $username_check_sql = "SELECT `id` FROM `user` WHERE `user_name` = '$user_name'";
-                $username_check = $conn->query($username_check_sql);
-                if ($username_check->num_rows > 0) {
-                    if ($is_edit && !empty($edit_id)) {
-                        $curr_username_sql = "SELECT `user_name` FROM `user` WHERE `user_id` = '$edit_id'";
-                        $curr_username_result = $conn->query($curr_username_sql);
-                        if ($curr_username_result->num_rows > 0) {
-                            $curr_username = $curr_username_result->fetch_assoc()['user_name'];
-                            if ($user_name === $curr_username) {
-                                // Same as current, allow
-                            } else {
-                                $output["head"]["code"] = 400;
-                                $output["head"]["msg"] = "Username Already Exists.";
-                                echo json_encode($output, JSON_NUMERIC_CHECK);
-                                exit();
-                            }
-                        } else {
-                            $output["head"]["code"] = 400;
-                            $output["head"]["msg"] = "User not found.";
-                            echo json_encode($output, JSON_NUMERIC_CHECK);
-                            exit();
-                        }
-                    } else {
-                        $output["head"]["code"] = 400;
-                        $output["head"]["msg"] = "Username Already Exists.";
-                        echo json_encode($output, JSON_NUMERIC_CHECK);
-                        exit();
-                    }
-                }
-
                 if ($is_edit && !empty($edit_id)) {
                     // Edit mode
                     $curr_phone_sql = "SELECT `phone` FROM `user` WHERE `user_id` = '$edit_id'";
