@@ -21,7 +21,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
     $email_id = $obj->email_id;
 
     if (filter_var($email_id, FILTER_VALIDATE_EMAIL)) {
-        // 1. Check if email exists and if it's in cooldown
+        $conn->query("UPDATE email_verification SET otp = NULL, otp_expiry = NULL WHERE otp_expiry < NOW()");
         $stmtCheck = $conn->prepare("SELECT email_verification_id, created_at FROM email_verification WHERE email_id = ? AND deleted_at = 0 LIMIT 1");
         $stmtCheck->bind_param('s', $email_id);
         $stmtCheck->execute();
@@ -30,19 +30,17 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
 
         if ($existing && strtotime($existing['created_at']) > strtotime("-1 minute")) {
             $output["head"]["code"] = 400;
-            $output["head"]["msg"] = "OTP already sent recently. Please wait.";
+            $output["head"]["msg"] = "OTP already sent recently. Please wait 1 minute.";
         } else {
             $otp = sprintf("%04d", mt_rand(1, 9999));
             $otp_expiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
 
             if ($existing) {
-                // UPDATE: Keep the existing email_verification_id
                 $email_verification_id = $existing['email_verification_id'];
                 $stmtUpdate = $conn->prepare("UPDATE email_verification SET otp = ?, otp_expiry = ?, created_at = ? WHERE email_id = ?");
                 $stmtUpdate->bind_param('ssss', $otp, $otp_expiry, $timestamp, $email_id);
                 $success = $stmtUpdate->execute();
             } else {
-                // INSERT: Create a brand new record and ID
                 $sql_count = "SELECT COUNT(*) as cnt FROM email_verification";
                 $res_count = $conn->query($sql_count);
                 $next_seq = (int)$res_count->fetch_assoc()['cnt'] + 1;
@@ -56,18 +54,21 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
             if ($success) {
                 $output["head"]["code"] = 200;
                 $output["head"]["msg"] = "OTP sent successfully";
-                $output["body"]["otp"] = $otp;
+                $output["body"]["otp"] = $otp; // You can remove this line once you connect an actual Email Service
             } else {
                 $output["head"]["code"] = 400;
                 $output["head"]["msg"] = "Database error: " . $conn->error;
             }
         }
+    } else {
+        $output["head"]["code"] = 400;
+        $output["head"]["msg"] = "Invalid email format.";
     }
 }
 elseif (isset($obj->action) && $obj->action === 'verify_otp' && isset($obj->email_id) && isset($obj->otp)) {
     $email_id = $obj->email_id;
     $input_otp = $obj->otp;
-
+    $conn->query("UPDATE email_verification SET otp = NULL, otp_expiry = NULL WHERE otp_expiry < NOW()");
     if (filter_var($email_id, FILTER_VALIDATE_EMAIL) && ctype_digit($input_otp) && strlen($input_otp) === 4) {
         $stmtVerify = $conn->prepare("SELECT id FROM email_verification WHERE email_id = ? AND otp = ? AND otp_expiry > NOW() AND deleted_at = 0");
         $stmtVerify->bind_param('ss', $email_id, $input_otp);
