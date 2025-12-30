@@ -168,23 +168,23 @@ function ImageRemove($string, $id)
     } else if ($string == "customer") {
         $sql_customer = "UPDATE `customer` SET `img`=null WHERE `customer_id`='$id' ";
         if ($conn->query($sql_customer) === TRUE) {
-            $status = "customer Image Removed Successfully";
+            $status = "Customer Image Removed Successfully";
         } else {
-            $status = "customer Image Not Removed !";
+            $status = "Customer Image Not Removed !";
         }
     } else if ($string == "company") {
-        $sql_company = "UPDATE `company` SET  `img`=null WHERE `id`='$id' ";
+        $sql_company = "UPDATE `company` SET  `img`=null WHERE `company_id`='$id' ";
         if ($conn->query($sql_company) === TRUE) {
-            $status = "company Image Removed Successfully";
+            $status = "Company Image Removed Successfully";
         } else {
-            $status = "company Image Not Removed !";
+            $status = "Company Image Not Removed !";
         }
     } else if ($string == "customer_proof") {
         $sql_products = " UPDATE `customer` SET `proof_img`=null WHERE `customer_id`='$id' ";
         if ($conn->query($sql_products) === TRUE) {
-            $status = "Customer Proff Image Removed Successfully";
+            $status = "Customer Proof Image Removed Successfully";
         } else {
-            $status = "Customer Proff Image Not Removed !";
+            $status = "Customer Proof Image Not Removed !";
         }
     }
     return $status;

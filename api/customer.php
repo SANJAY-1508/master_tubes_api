@@ -388,7 +388,8 @@ elseif (isset($obj->search_text)) {
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Please provide all the required details.";
     }
-} elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->customer_id)) {
+} 
+elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->customer_id)) {
     $customer_id = $obj->customer_id;
 
     $stmt = $conn->prepare("SELECT * FROM customers WHERE customer_id = ? AND deleted_at = 0");
@@ -406,7 +407,32 @@ elseif (isset($obj->search_text)) {
         $output["head"]["msg"] = "Customer Not Found";
     }
     $stmt->close();
-} elseif (isset($obj->delete_customer_id)) {
+}
+elseif (isset($obj->action) && $obj->action === 'update_address') {
+    if (isset($obj->edit_customer_id) && isset($obj->delivery_address)) {
+        
+        $customer_id = $obj->edit_customer_id;
+        $delivery_address = $obj->delivery_address; // This is the JSON string from frontend
+
+        // Update only the delivery_address column
+        $stmt = $conn->prepare("UPDATE customers SET delivery_address = ? WHERE customer_id = ?");
+        $stmt->bind_param('ss', $delivery_address, $customer_id);
+
+        if ($stmt->execute()) {
+            $output["head"]["code"] = 200;
+            $output["head"]["msg"] = "Address Updated";
+        } else {
+            $output["head"]["code"] = 500;
+            $output["head"]["msg"] = "Database Update Failed";
+        }
+        $stmt->close();
+    } else {
+        // This triggers if edit_customer_id or delivery_address are missing
+        $output["head"]["code"] = 400; 
+        $output["head"]["msg"] = "Parameter Mismatch";
+    }
+}
+ elseif (isset($obj->delete_customer_id)) {
     // <<<<<<<<<<===================== This is to Delete the customers =====================>>>>>>>>>>
     $delete_customer_id = $obj->delete_customer_id;
     if (!empty($delete_customer_id)) {
