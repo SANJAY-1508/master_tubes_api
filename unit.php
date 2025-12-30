@@ -32,42 +32,44 @@ $user_id = $input->user_id ?? null;
 $created_name = $input->created_name ?? null;
 
 // Action flags
-$is_fetch = $method === 'POST' && (isset($input->fetch_all) || isset($input->unit_id));
+$is_fetch = $method === 'POST' && (isset($input->fetch_all) || isset($input->search_text));
 $is_create = $method === 'POST' && $unit_name && !isset($input->update_action) && !isset($input->delete_action);
 $is_update = in_array($method, ['POST', 'PUT']) && $unit_id && isset($input->update_action);
 $is_delete = in_array($method, ['POST', 'DELETE']) && $unit_id && isset($input->delete_action);
 
 
 // ==================================================================
-// 1. FETCH UNITS (Single or All)
+// 1. FETCH UNITS (All with optional search)
 // ==================================================================
 if ($is_fetch) {
-   
-    if (!empty($input->unit_id)) {
-        // Fetch single unit
-        $sql = "SELECT id, unit_id, unit_name, created_at 
-                FROM unit
-                WHERE unit_id = ? AND deleted_at = 0";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("s", $input->unit_id);
-    } else {
-        // Fetch all units
-        $sql = "SELECT id, unit_id, unit_name, created_at 
-                FROM unit
-                WHERE deleted_at = 0
-                ORDER BY unit_name ASC";
-        $stmt = $conn->prepare($sql);
+    // Fetch all units with optional search
+    $sql = "SELECT id, unit_id, unit_name, created_at 
+            FROM unit
+            WHERE deleted_at = 0";
+    $params = [];
+    $types = "";
+    if (isset($input->search_text)) {
+        $search_text = trim($input->search_text);
+        $sql .= " AND unit_name LIKE ?";
+        $params[] = "%$search_text%";
+        $types .= "s";
     }
-    
+    $sql .= " ORDER BY unit_name ASC";
+    $stmt = $conn->prepare($sql);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
     $stmt->execute();
     $result = $stmt->get_result();
     $units = $result->fetch_all(MYSQLI_ASSOC);
-    
+
     if (count($units) > 0) {
         $output["head"] = ["code" => 200, "msg" => "Success"];
         $output["body"]["units"] = $units;
     } else {
-        $output["head"] = ["code" => 404, "msg" => "No units found"];
+        $output["head"] = ["code" => 200, "msg" => "Unit Details Not Found"];
+        $output["body"]["units"] = [];
     }
     $stmt->close();
     goto end;
@@ -80,7 +82,7 @@ else if ($is_create) {
         $output["head"]["msg"] = "unit_name is required";
         goto end;
     }
-    
+
     // Check duplicate unit name (Globally, since company_id is removed)
     $check = $conn->prepare("SELECT 1 FROM unit WHERE unit_name = ? AND deleted_at = 0");
     $check->bind_param("s", $unit_name);
@@ -112,7 +114,7 @@ else if ($is_create) {
         (unit_id, unit_name, created_by, created_name, created_at)
         VALUES (?, ?, ?, ?, NOW())");
     $stmt->bind_param("ssss", $unit_id, $unit_name, $user_id, $created_name);
-    
+
     if ($stmt->execute()) {
         $output["head"] = ["code" => 200, "msg" => "Unit created successfully"];
         $output["body"] = [
@@ -134,7 +136,7 @@ else if ($is_update) {
         $output["head"]["msg"] = "unit_name is required for update";
         goto end;
     }
-    
+
     // Check if unit exists
     $check = $conn->prepare("SELECT 1 FROM unit WHERE unit_id = ? AND deleted_at = 0");
     $check->bind_param("s", $unit_id);
@@ -145,10 +147,10 @@ else if ($is_update) {
         goto end;
     }
     $check->close();
-    
+
     $stmt = $conn->prepare("UPDATE unit SET unit_name = ? WHERE unit_id = ?");
     $stmt->bind_param("ss", $unit_name, $unit_id);
-    
+
     if ($stmt->execute() && $stmt->affected_rows > 0) {
         $output["head"] = ["code" => 200, "msg" => "Unit updated successfully"];
     } else {
@@ -163,7 +165,7 @@ else if ($is_update) {
 else if ($is_delete) {
     $stmt = $conn->prepare("UPDATE unit SET deleted_at = 1 WHERE unit_id = ? AND deleted_at = 0");
     $stmt->bind_param("s", $unit_id);
-    
+
     if ($stmt->execute() && $stmt->affected_rows > 0) {
         $output["head"] = ["code" => 200, "msg" => "Unit deleted successfully"];
     } else {
