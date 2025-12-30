@@ -392,12 +392,9 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Please provide all the required details.";
     }
-} 
-
-
-elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->customer_id)) {
+} elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->customer_id)) {
     $customer_id = $obj->customer_id;
-    
+
     $stmt = $conn->prepare("SELECT * FROM customers WHERE customer_id = ? AND deleted_at = 0");
     $stmt->bind_param('s', $customer_id);
     $stmt->execute();
@@ -413,9 +410,7 @@ elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->cus
         $output["head"]["msg"] = "Customer Not Found";
     }
     $stmt->close();
-}
-
-elseif (isset($obj->delete_customer_id)) {
+} elseif (isset($obj->delete_customer_id)) {
     // <<<<<<<<<<===================== This is to Delete the customers =====================>>>>>>>>>>
     $delete_customer_id = $obj->delete_customer_id;
     if (!empty($delete_customer_id)) {
@@ -466,6 +461,72 @@ elseif (isset($obj->delete_customer_id)) {
     } else {
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Please provide all the required details.";
+    }
+} elseif (isset($obj->action) && $obj->action === 'toggle_wishlist' && isset($obj->customer_id) && isset($obj->product)) {
+    // <<<<<<<<<<===================== This is to toggle product in wishlist =====================>>>>>>>>>>
+    $customer_id = $obj->customer_id;
+    $product = $obj->product; // Full product object
+    $product_id = isset($product->product_id) ? $product->product_id : null;
+
+    if (empty($customer_id) || empty($product_id)) {
+        $output["head"]["code"] = 400;
+        $output["head"]["msg"] = "Customer ID and Product details are required.";
+    } else {
+        // Fetch customer wishlist
+        $stmt = $conn->prepare("SELECT id, wishlist_products FROM customers WHERE customer_id = ? AND deleted_at = 0");
+        $stmt->bind_param('s', $customer_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows === 0) {
+            $output["head"]["code"] = 404;
+            $output["head"]["msg"] = "Customer not found.";
+        } else {
+            $customer = $result->fetch_assoc();
+            $internal_id = $customer['id'];
+            $wishlist = $customer['wishlist_products'] ? json_decode($customer['wishlist_products'], true) : [];
+            if (!is_array($wishlist)) {
+                $wishlist = [];
+            }
+
+            // Check if product exists in wishlist by product_id
+            $found_index = -1;
+            foreach ($wishlist as $key => $item) {
+                if (isset($item['product_id']) && $item['product_id'] === $product_id) {
+                    $found_index = $key;
+                    break;
+                }
+            }
+
+            if ($found_index !== -1) {
+                // Remove from wishlist
+                unset($wishlist[$found_index]);
+                $new_wishlist = json_encode(array_values($wishlist));
+                $msg = "Product removed from wishlist.";
+                $in_wishlist = false;
+            } else {
+                // Add full product to wishlist
+                $product_obj = (array) $product; // Convert object to array for JSON
+                $wishlist[] = $product_obj;
+                $new_wishlist = json_encode($wishlist);
+                $msg = "Product added to wishlist.";
+                $in_wishlist = true;
+            }
+
+            // Update wishlist in DB
+            $stmtUpdate = $conn->prepare("UPDATE customers SET wishlist_products = ? WHERE id = ?");
+            $stmtUpdate->bind_param('si', $new_wishlist, $internal_id);
+            if ($stmtUpdate->execute()) {
+                $stmtUpdate->close();
+                $output["head"]["code"] = 200;
+                $output["head"]["msg"] = $msg;
+                $output["body"]["wishlist"] = $new_wishlist;
+                $output["body"]["in_wishlist"] = $in_wishlist;
+            } else {
+                $output["head"]["code"] = 400;
+                $output["head"]["msg"] = "Failed to update wishlist: " . $conn->error;
+            }
+        }
+        $stmt->close();
     }
 } else {
     $output["head"]["code"] = 400;
