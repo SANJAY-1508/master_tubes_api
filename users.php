@@ -20,7 +20,7 @@ $timestamp = date('Y-m-d H:i:s');
 if (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list users =====================>>>>>>>>>>
     $search_text = $obj->search_text;
-    $sql = "SELECT `id`, `user_id`,`user_name`, `name`, `phone`, `img`, `role`, `password`, `deleted_at`, `created_date` FROM `user` WHERE `deleted_at` = 0 AND `name` LIKE '%$search_text%'";
+    $sql = "SELECT `id`, `user_id`,`user_name`, `name`, `phone`, `img`, `role`, `deleted_at`, `created_at` FROM `user` WHERE `deleted_at` = 0 AND `name` LIKE '%$search_text%'";
     $result = $conn->query($sql);
     if ($result->num_rows > 0) {
         $output["head"]["code"] = 200;
@@ -30,7 +30,7 @@ if (isset($obj->search_text)) {
             $output["body"]["user"][$count] = $row;
             $imgLink = null;
             if ($row["img"] != null && $row["img"] != 'null' && strlen($row["img"]) > 0) {
-                $imgLink = "https://" . $_SERVER['SERVER_NAME'] . "/uploads/users/" . $row["img"];
+                $imgLink = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/users/" . $row["img"];
                 $output["body"]["user"][$count]["img"] = $imgLink;
             } else {
                 $output["body"]["user"][$count]["img"] = $imgLink;
@@ -57,39 +57,59 @@ if (isset($obj->search_text)) {
 
             if (numericCheck($phone_number) && strlen($phone_number) == 10) {
 
-                if (isset($obj->edit_user_id)) {
-                    $edit_id = $obj->edit_user_id;
-                    if ($edit_id) {
-                        $updateUser = "";
-                        if (!empty($user_profile_img)) {
-                            $outputFilePath = "../uploads/users/";
-                            $profile_path = pngImageToWebP($user_profile_img, $outputFilePath);
-                            $updateUser = "UPDATE `user` SET `name`='$name',`user_name`='$user_name', `img`='$profile_path', `phone`='$phone_number', `password`='$password', `role`='$role' WHERE `user_id`='$edit_id'";
-                        } else {
-                            $updateUser = "UPDATE `user` SET `name`='$name',`user_name`='$user_name', `phone`='$phone_number', `password`='$password', `role`='$role' WHERE `user_id`='$edit_id'";
-                        }
+                $is_edit = isset($obj->edit_user_id);
+                $edit_id = $is_edit ? $obj->edit_user_id : null;
 
-                        if ($conn->query($updateUser)) {
-                            $output["head"]["code"] = 200;
-                            $output["head"]["msg"] = "Successfully User Details Updated";
-                        } else {
-                            $output["head"]["code"] = 400;
-                            $output["head"]["msg"] = "Failed to connect. Please try again." . $conn->error;
+                if ($is_edit && !empty($edit_id)) {
+                    // Edit mode
+                    $curr_phone_sql = "SELECT `phone` FROM `user` WHERE `user_id` = '$edit_id'";
+                    $curr_phone_result = $conn->query($curr_phone_sql);
+                    if ($curr_phone_result->num_rows > 0) {
+                        $curr_phone = $curr_phone_result->fetch_assoc()['phone'];
+                        if ($phone_number !== $curr_phone) {
+                            // Phone changed, check uniqueness
+                            $phone_check = $conn->query("SELECT `id` FROM `user` WHERE `phone` = '$phone_number'");
+                            if ($phone_check->num_rows > 0) {
+                                $output["head"]["code"] = 400;
+                                $output["head"]["msg"] = "Mobile Number Already Exists.";
+                                echo json_encode($output, JSON_NUMERIC_CHECK);
+                                exit();
+                            }
                         }
                     } else {
                         $output["head"]["code"] = 400;
                         $output["head"]["msg"] = "User not found.";
+                        echo json_encode($output, JSON_NUMERIC_CHECK);
+                        exit();
+                    }
+
+                    $updateUser = "";
+                    if (!empty($user_profile_img)) {
+                        $outputFilePath = "../uploads/users/";
+                        $profile_path = pngImageToWebP($user_profile_img, $outputFilePath);
+                        $updateUser = "UPDATE `user` SET `name`='$name',`user_name`='$user_name', `img`='$profile_path', `phone`='$phone_number', `password`='$password', `role`='$role' WHERE `user_id`='$edit_id'";
+                    } else {
+                        $updateUser = "UPDATE `user` SET `name`='$name',`user_name`='$user_name', `phone`='$phone_number', `password`='$password', `role`='$role' WHERE `user_id`='$edit_id'";
+                    }
+
+                    if ($conn->query($updateUser)) {
+                        $output["head"]["code"] = 200;
+                        $output["head"]["msg"] = "Successfully User Details Updated";
+                    } else {
+                        $output["head"]["code"] = 400;
+                        $output["head"]["msg"] = "Failed to connect. Please try again." . $conn->error;
                     }
                 } else {
+                    // Create mode
                     $mobileCheck = $conn->query("SELECT `id` FROM `user` WHERE `phone`='$phone_number'");
                     if ($mobileCheck->num_rows == 0) {
                         $createUser = "";
                         if (!empty($user_profile_img)) {
                             $outputFilePath = "../uploads/users/";
                             $profile_path = pngImageToWebP($user_profile_img, $outputFilePath);
-                            $createUser = "INSERT INTO `user` (`name`, `user_name`,`phone`, `password`, `role`, `created_date`, `img`) VALUES ('$name','$user_name', '$phone_number', '$password', '$role', '$timestamp', '$profile_path')";
+                            $createUser = "INSERT INTO `user` (`name`, `user_name`,`phone`, `password`, `role`, `created_at`, `img`) VALUES ('$name','$user_name', '$phone_number', '$password', '$role', '$timestamp', '$profile_path')";
                         } else {
-                            $createUser = "INSERT INTO `user` (`name`, `user_name`,`phone`, `password`, `role`, `created_date` ) VALUES ('$name','$user_name', '$phone_number', '$password', '$role', '$timestamp')";
+                            $createUser = "INSERT INTO `user` (`name`, `user_name`,`phone`, `password`, `role`, `created_at` ) VALUES ('$name','$user_name', '$phone_number', '$password', '$role', '$timestamp')";
                         }
 
                         if ($conn->query($createUser)) {
@@ -123,28 +143,16 @@ if (isset($obj->search_text)) {
     }
 } else if (isset($obj->delete_user_id) && isset($obj->image_delete)) {
     $delete_user_id = $obj->delete_user_id;
-
     $image_delete = $obj->image_delete;
 
-
-    if (!empty($delete_user_id)) {
-
-
-
-
-        if ($image_delete === true) {
-
-            $status = ImageRemove('user', $delete_user_id);
-            if ($status == "User Image Removed Successfully") {
-                $output["head"]["code"] = 200;
-                $output["head"]["msg"] = "successfully user Image deleted !.";
-            } else {
-                $output["head"]["code"] = 400;
-                $output["head"]["msg"] = "faild to deleted.please try againg.";
-            }
+    if (!empty($delete_user_id) && $image_delete === true) {
+        $status = ImageRemove('user', $delete_user_id);
+        if ($status == "User Image Removed Successfully") {
+            $output["head"]["code"] = 200;
+            $output["head"]["msg"] = "successfully user Image deleted !.";
         } else {
             $output["head"]["code"] = 400;
-            $output["head"]["msg"] = "User not found.";
+            $output["head"]["msg"] = "faild to deleted.please try againg.";
         }
     } else {
         $output["head"]["code"] = 400;
@@ -154,18 +162,13 @@ if (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to Delete the users =====================>>>>>>>>>>
     $delete_user_id = $obj->delete_user_id;
     if (!empty($delete_user_id)) {
-        if ($delete_user_id) {
-            $deleteuser = "UPDATE `user` SET `deleted_at`=1 WHERE `user_id`='$delete_user_id'";
-            if ($conn->query($deleteuser) === true) {
-                $output["head"]["code"] = 200;
-                $output["head"]["msg"] = "Successfully User Deleted.";
-            } else {
-                $output["head"]["code"] = 400;
-                $output["head"]["msg"] = "Failed to delete. Please try again.";
-            }
+        $deleteuser = "UPDATE `user` SET `deleted_at`=1 WHERE `user_id`='$delete_user_id'";
+        if ($conn->query($deleteuser) === true) {
+            $output["head"]["code"] = 200;
+            $output["head"]["msg"] = "Successfully User Deleted.";
         } else {
             $output["head"]["code"] = 400;
-            $output["head"]["msg"] = "Invalid data.";
+            $output["head"]["msg"] = "Failed to delete. Please try again.";
         }
     } else {
         $output["head"]["code"] = 400;
@@ -177,9 +180,17 @@ if (isset($obj->search_text)) {
     $password = $obj->password;
 
     if (!empty($phone) && !empty($password)) {
-        $loginCheck = $conn->query("SELECT `id`, `user_id`, `name`, `phone`, `img`, `role`, `password`, `deleted_at`, `created_date` FROM `user` WHERE `phone`='$phone' AND `password`='$password' AND `deleted_at`=0");
+        $loginCheck = $conn->query("SELECT `id`, `user_id`, `name`, `phone`, `img`, `role`, `password`, `deleted_at`, `created_at` FROM `user` WHERE `phone`='$phone' AND `password`='$password' AND `deleted_at`=0");
         if ($loginCheck->num_rows > 0) {
             $user = $loginCheck->fetch_assoc();
+            unset($user['password']); // Security: Do not return password
+            $imgLink = null;
+            if ($user["img"] != null && $user["img"] != 'null' && strlen($user["img"]) > 0) {
+                $imgLink = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/users/" . $user["img"];
+                $user["img"] = $imgLink;
+            } else {
+                $user["img"] = $imgLink;
+            }
             $output["head"]["code"] = 200;
             $output["head"]["msg"] = "Login Successful";
             $output["body"]["user"] = $user;
