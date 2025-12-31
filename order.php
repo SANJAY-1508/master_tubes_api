@@ -101,4 +101,4 @@ if (isset($obj->search_text)) {
     $output["head"]["inputs"] = $obj;
 }
 
-echo json_encode($output, JSON_NUMERIC_CHECK);
+echo json_encode($output, JSON_NUMERIC_CHECK | JSON_UNESCAPED_SLASHES);
