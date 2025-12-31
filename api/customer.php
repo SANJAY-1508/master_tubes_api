@@ -559,7 +559,7 @@ elseif (isset($obj->action) && $obj->action === 'update_address') {
     }
 }
 
-if (isset($obj->action) && $obj->action === 'save_feedback') {
+elseif (isset($obj->action) && $obj->action === 'save_feedback') {
      // <<<<<<<<<<===================== This is to Feedback for the customers =====================>>>>>>>>>>
     $customer_id = $obj->customer_id;
     $feedback = $obj->feedback;
