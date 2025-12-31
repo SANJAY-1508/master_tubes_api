@@ -23,6 +23,7 @@ if (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list orders =====================>>>>>>>>>>
     $search_text = $obj->search_text;
     $customer_id = isset($obj->customer_id) ? $obj->customer_id : null;
+    $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/products/";
     $sql = "SELECT * FROM `order_enquiry` WHERE `deleted_at` = 0";
     if (!empty($customer_id)) {
         $sql .= " AND `customer_id` = '$customer_id'";
@@ -35,6 +36,16 @@ if (isset($obj->search_text)) {
         $count = 0;
         while ($row = $result->fetch_assoc()) {
             $row['product_details'] = json_decode($row['product_details']);
+
+            // Prepend baseUrl to each product_img if it exists
+            if (is_array($row['product_details']) || is_object($row['product_details'])) {
+                foreach ($row['product_details'] as &$product) {
+                    if (isset($product->product_img) && !empty($product->product_img)) {
+                        $product->product_img = $baseUrl . $product->product_img;
+                    }
+                }
+            }
+
             $output["body"]["orders"][$count] = $row;
             $count++;
         }
@@ -90,4 +101,4 @@ if (isset($obj->search_text)) {
     $output["head"]["inputs"] = $obj;
 }
 
-echo json_encode($output, JSON_NUMERIC_CHECK);
+echo json_encode($output, JSON_NUMERIC_CHECK | JSON_UNESCAPED_SLASHES);
