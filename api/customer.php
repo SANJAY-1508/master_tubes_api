@@ -163,7 +163,7 @@ elseif (isset($obj->search_text)) {
         $output["head"]["msg"] = "Customer Details Not Found";
         $output["body"]["customer"] = [];
     }
-// } elseif (isset($obj->first_name) && isset($obj->last_name) && isset($obj->phone_number) && isset($obj->email_id)) {
+
 } elseif (isset($obj->first_name) && isset($obj->phone_number) && isset($obj->email_id)) {
     $first_name = $obj->first_name;
     $last_name = $obj->last_name;
