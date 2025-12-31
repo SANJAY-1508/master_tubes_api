@@ -557,6 +557,31 @@ elseif (isset($obj->action) && $obj->action === 'update_address') {
         }
         $stmt->close();
     }
+}
+
+if (isset($obj->action) && $obj->action === 'save_feedback') {
+     // <<<<<<<<<<===================== This is to Feedback for the customers =====================>>>>>>>>>>
+    $customer_id = $obj->customer_id;
+    $feedback = $obj->feedback;
+    $rating = (string)$obj->rating; // Ensure rating is treated as a string for ENUM
+
+    if (!empty($customer_id)) {
+        // 'sss' because customer_id, feedback (varchar), and rating (enum) are all strings
+        $stmt = $conn->prepare("UPDATE customers SET feedback = ?, rating = ? WHERE customer_id = ?");
+        $stmt->bind_param('sss', $feedback, $rating, $customer_id);
+
+        if ($stmt->execute()) {
+            $output["head"]["code"] = 200;
+            $output["head"]["msg"] = "Feedback saved successfully!";
+        } else {
+            $output["head"]["code"] = 400;
+            $output["head"]["msg"] = "Error saving feedback: " . $conn->error;
+        }
+        $stmt->close();
+    } else {
+        $output["head"]["code"] = 400;
+        $output["head"]["msg"] = "Customer ID missing.";
+    }
 } else {
     $output["head"]["code"] = 400;
     $output["head"]["msg"] = "Parameter Mismatch";
