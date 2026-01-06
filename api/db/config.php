@@ -12,7 +12,8 @@ if ($conn->connect_error) {
     $output["head"]["msg"] = "DB Connection Lost...";
 
     echo json_encode($output, JSON_NUMERIC_CHECK);
-};
+}
+;
 
 
 
@@ -125,7 +126,8 @@ function uniqueID($prefix_name, $auto_increment_id)
 // ===================================================================
 function saveBase64Image($base64String, $uploadDir = "../uploads/products/")
 {
-    if (empty($base64String)) return null;
+    if (empty($base64String))
+        return null;
 
     // Create directory if not exists
     if (!is_dir($uploadDir)) {
@@ -138,10 +140,12 @@ function saveBase64Image($base64String, $uploadDir = "../uploads/products/")
     }
 
     $imageData = base64_decode($base64String);
-    if ($imageData === false) return null;
+    if ($imageData === false)
+        return null;
 
     $source = @imagecreatefromstring($imageData);
-    if ($source === false) return null;
+    if ($source === false)
+        return null;
 
     $timestamp = str_replace([' ', ':'], '-', date('Y-m-d H:i:s'));
     $filename = $timestamp . '.webp';

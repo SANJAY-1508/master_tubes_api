@@ -64,8 +64,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Invalid email format.";
     }
-}
-elseif (isset($obj->action) && $obj->action === 'verify_otp' && isset($obj->email_id) && isset($obj->otp)) {
+} elseif (isset($obj->action) && $obj->action === 'verify_otp' && isset($obj->email_id) && isset($obj->otp)) {
     $email_id = $obj->email_id;
     $input_otp = $obj->otp;
     $conn->query("UPDATE email_verification SET otp = NULL, otp_expiry = NULL WHERE otp_expiry < NOW()");
@@ -96,7 +95,7 @@ elseif (isset($obj->action) && $obj->action === 'verify_otp' && isset($obj->emai
                 $output["body"]["customer"] = $customer;
             } else {
                 // NEW USER: Send 400 code as requested
-                $output["head"]["code"] = 400; 
+                $output["head"]["code"] = 400;
                 $output["head"]["msg"] = "New user verified. Redirecting to profile details.";
             }
         } else {
@@ -106,8 +105,7 @@ elseif (isset($obj->action) && $obj->action === 'verify_otp' && isset($obj->emai
         }
         $stmtVerify->close();
     }
-}
-elseif (isset($obj->action) && $obj->action === 'register_customer') {
+} elseif (isset($obj->action) && $obj->action === 'register_customer') {
     $email_id = $obj->email_id;
     $first_name = $obj->first_name;
     $last_name = $obj->last_name;
@@ -124,7 +122,7 @@ elseif (isset($obj->action) && $obj->action === 'register_customer') {
     // FIXED: Added one more '?' to match the 9 parameters below
     $insert_sql = "INSERT INTO customers (`customer_id`, `customer_no`, `first_name`, `last_name`, `phone_number`, `gender`, `date_of_birth`, `email_id`, `created_at`, `deleted_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
     $stmtInsert = $conn->prepare($insert_sql);
-    
+
     // Bind 9 strings ('s') for 9 question marks
     $stmtInsert->bind_param('sssssssss', $customer_id, $customer_no, $first_name, $last_name, $phone_number, $gender, $dob, $email_id, $timestamp);
 
@@ -142,8 +140,7 @@ elseif (isset($obj->action) && $obj->action === 'register_customer') {
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Error: " . $conn->error;
     }
-}
-elseif (isset($obj->search_text)) {
+} elseif (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list customers =====================>>>>>>>>>>
     $search_text = $obj->search_text;
     $sql = "SELECT * FROM `customers` 
@@ -163,7 +160,6 @@ elseif (isset($obj->search_text)) {
         $output["head"]["msg"] = "Customer Details Not Found";
         $output["body"]["customer"] = [];
     }
-
 } elseif (isset($obj->first_name) && isset($obj->phone_number) && isset($obj->email_id)) {
     $first_name = $obj->first_name;
     $last_name = $obj->last_name;
@@ -191,7 +187,7 @@ elseif (isset($obj->search_text)) {
                     // $address_valid = !$delivery_address || !preg_match('/[^a-zA-Z0-9., ]+/', $delivery_address);
                     // $wishlist_valid = !$wishlist_products || is_string($wishlist_products);
                     // if ($dob_valid && $gender_valid && $address_valid && $wishlist_valid) {
-                                        $gender_valid = !$gender || in_array($gender, ['Male', 'Female', 'Other']);
+                    $gender_valid = !$gender || in_array($gender, ['Male', 'Female', 'Other']);
                     $address_valid = true;  // Allow any characters in address (common in real addresses)
                     $wishlist_valid = !$wishlist_products || is_string($wishlist_products);
                     if ($dob_valid && $gender_valid && $address_valid && $wishlist_valid) {
@@ -395,8 +391,7 @@ elseif (isset($obj->search_text)) {
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Please provide all the required details.";
     }
-} 
-elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->customer_id)) {
+} elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->customer_id)) {
     $customer_id = $obj->customer_id;
 
     $stmt = $conn->prepare("SELECT * FROM customers WHERE customer_id = ? AND deleted_at = 0");
@@ -414,10 +409,9 @@ elseif (isset($obj->action) && $obj->action === 'get_profile' && isset($obj->cus
         $output["head"]["msg"] = "Customer Not Found";
     }
     $stmt->close();
-}
-elseif (isset($obj->action) && $obj->action === 'update_address') {
+} elseif (isset($obj->action) && $obj->action === 'update_address') {
     if (isset($obj->edit_customer_id) && isset($obj->delivery_address)) {
-        
+
         $customer_id = $obj->edit_customer_id;
         $delivery_address = $obj->delivery_address; // This is the JSON string from frontend
 
@@ -435,11 +429,10 @@ elseif (isset($obj->action) && $obj->action === 'update_address') {
         $stmt->close();
     } else {
         // This triggers if edit_customer_id or delivery_address are missing
-        $output["head"]["code"] = 400; 
+        $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Parameter Mismatch";
     }
-}
- elseif (isset($obj->delete_customer_id)) {
+} elseif (isset($obj->delete_customer_id)) {
     // <<<<<<<<<<===================== This is to Delete the customers =====================>>>>>>>>>>
     $delete_customer_id = $obj->delete_customer_id;
     if (!empty($delete_customer_id)) {
@@ -557,10 +550,8 @@ elseif (isset($obj->action) && $obj->action === 'update_address') {
         }
         $stmt->close();
     }
-}
-
-elseif (isset($obj->action) && $obj->action === 'save_feedback') {
-     // <<<<<<<<<<===================== This is to Feedback for the customers =====================>>>>>>>>>>
+} elseif (isset($obj->action) && $obj->action === 'save_feedback') {
+    // <<<<<<<<<<===================== This is to Feedback for the customers =====================>>>>>>>>>>
     $customer_id = $obj->customer_id;
     $feedback = $obj->feedback;
     $rating = (string)$obj->rating; // Ensure rating is treated as a string for ENUM

@@ -44,7 +44,26 @@ if (isset($obj->name) && isset($obj->email) && isset($obj->comment)) {
         $output["head"]["code"] = 400;
         $output["head"]["msg"] = "Name and Email are required.";
     }
-} else {
+} elseif(isset($obj->search_text)) {
+    $search_text = $obj->search_text;
+    $sql = "SELECT * FROM `contact_form` WHERE `name` LIKE '%$search_text%' ORDER BY `id` ASC";
+    $result = $conn->query($sql);
+    if ($result->num_rows > 0) {
+        $output["head"]["code"] = 200;
+        $output["head"]["msg"] = "Success";
+        $count = 0;
+        
+        while ($row = $result->fetch_assoc()) {
+            $output["body"]["contact_form"][$count] = $row;
+            $count++;
+        }
+    } else {
+        $output["head"]["code"] = 200;
+        $output["head"]["msg"] = "contact_form Details Not Found";
+        $output["body"]["contact_form"] = [];
+    }
+    
+}else {
     $output["head"]["code"] = 400;
     $output["head"]["msg"] = "Parameter Mismatch";
 }

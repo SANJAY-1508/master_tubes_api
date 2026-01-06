@@ -28,7 +28,7 @@ if (isset($obj->search_text)) {
         $output["head"]["code"] = 200;
         $output["head"]["msg"] = "Success";
         $count = 0;
-        $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/categories/";
+        $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/categories/";
         while ($row = $result->fetch_assoc()) {
             $output["body"]["categories"][$count] = $row;
             if (!empty($row['category_img'])) {
@@ -85,7 +85,7 @@ if (isset($obj->search_text)) {
                         $output["head"]["code"] = 200;
                         $output["head"]["msg"] = "Successfully Category Details Updated";
                         if ($savedImageName) {
-                            $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/categories/" . $savedImageName;
+                            $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/categories/" . $savedImageName;
                         }
                     } else {
                         $output["head"]["code"] = 400;
@@ -123,7 +123,7 @@ if (isset($obj->search_text)) {
                     $output["head"]["msg"] = "Successfully Category Created";
                     $output["body"]["category_id"] = $enid;
                     if ($savedImageName) {
-                        $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/categories/" . $savedImageName;
+                        $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/categories/" . $savedImageName;
                     }
                 } else {
                     $output["head"]["code"] = 400;

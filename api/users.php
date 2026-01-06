@@ -20,7 +20,7 @@ $timestamp = date('Y-m-d H:i:s');
 if (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list users =====================>>>>>>>>>>
     $search_text = $obj->search_text;
-    $sql = "SELECT `id`, `user_id`,`user_name`, `name`, `phone`, `img`, `role`, `deleted_at`, `created_at` FROM `user` WHERE `deleted_at` = 0 AND `name` LIKE '%$search_text%'";
+    $sql = "SELECT `id`, `user_id`,`user_name`, `name`, `phone`, `img`, `role`, `deleted_at`, `created_at`,`password` FROM `user` WHERE `deleted_at` = 0 AND `name` LIKE '%$search_text%'";
     $result = $conn->query($sql);
     if ($result->num_rows > 0) {
         $output["head"]["code"] = 200;
@@ -30,7 +30,7 @@ if (isset($obj->search_text)) {
             $output["body"]["user"][$count] = $row;
             $imgLink = null;
             if ($row["img"] != null && $row["img"] != 'null' && strlen($row["img"]) > 0) {
-                $imgLink = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/users/" . $row["img"];
+                $imgLink = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/users/" . $row["img"];
                 $output["body"]["user"][$count]["img"] = $imgLink;
             } else {
                 $output["body"]["user"][$count]["img"] = $imgLink;
@@ -186,7 +186,7 @@ if (isset($obj->search_text)) {
             unset($user['password']); // Security: Do not return password
             $imgLink = null;
             if ($user["img"] != null && $user["img"] != 'null' && strlen($user["img"]) > 0) {
-                $imgLink = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/users/" . $user["img"];
+                $imgLink = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/users/" . $user["img"];
                 $user["img"] = $imgLink;
             } else {
                 $user["img"] = $imgLink;

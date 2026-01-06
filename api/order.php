@@ -23,7 +23,7 @@ if (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list orders =====================>>>>>>>>>>
     $search_text = $obj->search_text;
     $customer_id = isset($obj->customer_id) ? $obj->customer_id : null;
-    $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/products/";
+    $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/products/";
     $sql = "SELECT * FROM `order_enquiry` WHERE `deleted_at` = 0";
     if (!empty($customer_id)) {
         $sql .= " AND `customer_id` = '$customer_id'";
@@ -65,7 +65,7 @@ if (isset($obj->search_text)) {
     $shipping_charges = $obj->shipping_charges;
     $grand_total = $obj->grand_total;
 
-    if (!empty($customer_id) && !empty($shipping_address) && !empty($total_items) && !empty($product_details_json) && !empty($sub_total) && !empty($discount) && !empty($shipping_charges) && !empty($grand_total)) {
+    if (!empty($customer_id) && !empty($shipping_address) && !empty($total_items) && !empty($product_details_json) && !empty($sub_total)  && !empty($shipping_charges) && !empty($grand_total)) {
 
         // Generate Order Number
         $sql_count = "SELECT COUNT(*) as total FROM `order_enquiry` WHERE `deleted_at` = 0";

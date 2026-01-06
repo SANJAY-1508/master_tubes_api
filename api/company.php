@@ -28,7 +28,7 @@ if (isset($obj->search_text)) {
         $count = 0;
         while ($row = $result->fetch_assoc()) {
             $output["body"]["company"][$count] = $row;
-            $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/companies/";
+            $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/companies/";
 
             // Set full URL for img
             $imgLink = null;

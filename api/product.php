@@ -32,7 +32,7 @@ if (isset($obj->search_text)) {
         $output["head"]["code"] = 200;
         $output["head"]["msg"] = "Success";
         $count = 0;
-        $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/products/";
+        $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/products/";
         while ($row = $result->fetch_assoc()) {
             $output["body"]["products"][$count] = $row;
             if (!empty($row['product_img'])) {
@@ -99,7 +99,7 @@ if (isset($obj->search_text)) {
                         $output["head"]["code"] = 200;
                         $output["head"]["msg"] = "Successfully Product Details Updated";
                         if ($savedImageName) {
-                            $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/products/" . $savedImageName;
+                            $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/products/" . $savedImageName;
                         }
                     } else {
                         $output["head"]["code"] = 400;
@@ -137,7 +137,7 @@ if (isset($obj->search_text)) {
                     $output["head"]["msg"] = "Successfully Product Created";
                     $output["body"]["product_id"] = $enid;
                     if ($savedImageName) {
-                        $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/master_tubes_website_api/uploads/products/" . $savedImageName;
+                        $output["body"]["image_url"] = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/products/" . $savedImageName;
                     }
                 } else {
                     $output["head"]["code"] = 400;
