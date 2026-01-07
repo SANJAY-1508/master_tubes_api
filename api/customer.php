@@ -43,7 +43,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
             } else {
                 $sql_count = "SELECT COUNT(*) as cnt FROM email_verification";
                 $res_count = $conn->query($sql_count);
-                $next_seq = (int)$res_count->fetch_assoc()['cnt'] + 1;
+                $next_seq = (int) $res_count->fetch_assoc()['cnt'] + 1;
                 $email_verification_id = "mas_tub_email_" . sprintf("%03d", $next_seq);
 
                 $stmtInsert = $conn->prepare("INSERT INTO email_verification (email_verification_id, email_id, otp, otp_expiry, created_at, deleted_at) VALUES (?, ?, ?, ?, ?, 0)");
@@ -115,7 +115,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
 
     $sql_count = "SELECT COUNT(*) as cnt FROM customers";
     $res_count = $conn->query($sql_count);
-    $next_seq = (int)$res_count->fetch_assoc()['cnt'] + 1;
+    $next_seq = (int) $res_count->fetch_assoc()['cnt'] + 1;
     $customer_no = "mas_tub_cus_" . sprintf("%03d", $next_seq);
     $customer_id = "mas_tub_cus_" . uniqid();
 
@@ -303,7 +303,7 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
                                 $sql_count = "SELECT COUNT(*) as cnt FROM customers WHERE deleted_at = 0";
                                 $result_count = $conn->query($sql_count);
                                 $row_count = $result_count->fetch_assoc();
-                                $next_seq = (int)$row_count['cnt'] + 1;
+                                $next_seq = (int) $row_count['cnt'] + 1;
                                 $customer_no = "mas_tub_cus_" . sprintf("%03d", $next_seq);
                                 // Generate unique customer_id
                                 if (function_exists('uniqueID')) {
@@ -549,29 +549,6 @@ if (isset($obj->action) && $obj->action === 'send_otp' && isset($obj->email_id))
             }
         }
         $stmt->close();
-    }
-} elseif (isset($obj->action) && $obj->action === 'save_feedback') {
-    // <<<<<<<<<<===================== This is to Feedback for the customers =====================>>>>>>>>>>
-    $customer_id = $obj->customer_id;
-    $feedback = $obj->feedback;
-    $rating = (string)$obj->rating; // Ensure rating is treated as a string for ENUM
-
-    if (!empty($customer_id)) {
-        // 'sss' because customer_id, feedback (varchar), and rating (enum) are all strings
-        $stmt = $conn->prepare("UPDATE customers SET feedback = ?, rating = ? WHERE customer_id = ?");
-        $stmt->bind_param('sss', $feedback, $rating, $customer_id);
-
-        if ($stmt->execute()) {
-            $output["head"]["code"] = 200;
-            $output["head"]["msg"] = "Feedback saved successfully!";
-        } else {
-            $output["head"]["code"] = 400;
-            $output["head"]["msg"] = "Error saving feedback: " . $conn->error;
-        }
-        $stmt->close();
-    } else {
-        $output["head"]["code"] = 400;
-        $output["head"]["msg"] = "Customer ID missing.";
     }
 } else {
     $output["head"]["code"] = 400;
