@@ -54,9 +54,12 @@ if (isset($obj->search_text)) {
         $output["head"]["msg"] = "Order Details Not Found";
         $output["body"]["orders"] = [];
     }
-} else if (isset($obj->customer_id) && isset($obj->product_details) && isset($obj->shipping_address) && isset($obj->total_items) && isset($obj->sub_total) && isset($obj->discount) && isset($obj->shipping_charges) && isset($obj->grand_total)) {
-    // <<<<<<<<<<===================== This is to Create orders =====================>>>>>>>>>>
-    $customer_id = $obj->customer_id;
+} else if (isset($obj->product_details) && isset($obj->shipping_address) && isset($obj->total_items) && isset($obj->sub_total) && isset($obj->discount) && isset($obj->shipping_charges) && isset($obj->grand_total)) {
+    // <<<<<<<<<<===================== Create orders (Guest-Friendly) =====================>>>>>>>>>>
+
+    // Check if customer_id exists, otherwise set it to a default value like 'GUEST' or 0
+    $customer_id = isset($obj->customer_id) ? $obj->customer_id : 'null';
+
     $shipping_address = $obj->shipping_address;
     $total_items = $obj->total_items;
     $product_details_json = json_encode($obj->product_details);
@@ -65,7 +68,8 @@ if (isset($obj->search_text)) {
     $shipping_charges = $obj->shipping_charges;
     $grand_total = $obj->grand_total;
 
-    if (!empty($customer_id) && !empty($shipping_address) && !empty($total_items) && !empty($product_details_json) && !empty($sub_total)  && !empty($shipping_charges) && !empty($grand_total)) {
+    // Remove the mandatory check for customer_id inside the empty() check
+    if (!empty($shipping_address) && !empty($total_items) && !empty($product_details_json) && isset($sub_total) && isset($shipping_charges) && isset($grand_total)) {
 
         // Generate Order Number
         $sql_count = "SELECT COUNT(*) as total FROM `order_enquiry` WHERE `deleted_at` = 0";
@@ -76,6 +80,8 @@ if (isset($obj->search_text)) {
 
         $order_date = date('Y-m-d');
 
+        // Note: Ensure your database 'customer_id' column can accept the string 'GUEST' 
+        // or change 'GUEST' to 0 if your column is an integer.
         $createOrder = "INSERT INTO `order_enquiry` (`order_no`, `order_date`, `customer_id`, `shipping_address`, `total_items`, `product_details`, `sub_total`, `discount`, `shipping_charges`, `grand_total`, `status`, `created_at`, `deleted_at`) VALUES ('$order_no', '$order_date', '$customer_id', '$shipping_address', $total_items, '$product_details_json', $sub_total, $discount, $shipping_charges, $grand_total, 0, '$timestamp', 0)";
 
         if ($conn->query($createOrder)) {
@@ -89,7 +95,7 @@ if (isset($obj->search_text)) {
             $output["body"]["order_no"] = $order_no;
         } else {
             $output["head"]["code"] = 400;
-            $output["head"]["msg"] = "Failed to connect. Please try again.";
+            $output["head"]["msg"] = "Database Error: " . $conn->error;
         }
     } else {
         $output["head"]["code"] = 400;
