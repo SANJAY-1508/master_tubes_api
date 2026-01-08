@@ -23,26 +23,17 @@ if (isset($obj->search_text)) {
     // <<<<<<<<<<===================== This is to list orders =====================>>>>>>>>>>
     $search_text = $conn->real_escape_string($obj->search_text);
     $customer_id = isset($obj->customer_id) ? $conn->real_escape_string($obj->customer_id) : null;
-    
-    // NEW: Capture the type from the request (1 = Ordinary, 2 = Customized)
     $type = isset($obj->type) ? $conn->real_escape_string($obj->type) : null;
 
     $baseUrl = "http://" . $_SERVER['SERVER_NAME'] . "/uploads/products/";
-    
-    // Start with the base query
     $sql = "SELECT * FROM `order_enquiry` WHERE `deleted_at` = 0";
     
-    // Filter by customer if provided
     if (!empty($customer_id)) {
         $sql .= " AND `customer_id` = '$customer_id'";
     }
-
-    // NEW: Filter by type if provided
     if (!empty($type)) {
         $sql .= " AND `type` = '$type'";
     }
-
-    // Filter by search text
     $sql .= " AND (`order_no` LIKE '%$search_text%' OR `customer_id` LIKE '%$search_text%')";
     
     $sql .= " ORDER BY `id` DESC";
