@@ -152,59 +152,7 @@ if (isset($obj->search_text)) {
         }
     }
 }
-// } else if (isset($obj->product_details) && isset($obj->shipping_address) && isset($obj->total_items) && isset($obj->sub_total) && isset($obj->discount) && isset($obj->shipping_charges) && isset($obj->grand_total)) {
-//     // <<<<<<<<<<===================== Create orders (Guest-Friendly) =====================>>>>>>>>>>
 
-//     // Check if customer_id exists, otherwise set it to a default value like 'GUEST' or 0
-//     $customer_id = isset($obj->customer_id) ? $obj->customer_id : 'null';
-
-//     $shipping_address = $obj->shipping_address;
-//     $total_items = $obj->total_items;
-//     $product_details_json = json_encode($obj->product_details);
-
-//     $discount = $obj->discount;
-
-//     $grand_total = $obj->grand_total;
-//     $order_type = isset($obj->product_details[0]->type) ? $obj->product_details[0]->type : '1';
-//     $sub_total = "NULL";
-//     $shipping_charges = "NULL";
-
-//     // Remove the mandatory check for customer_id inside the empty() check
-//     if (!empty($shipping_address) && !empty($total_items) && !empty($product_details_json)) {
-
-//         // Generate Order Number
-//         $sql_count = "SELECT COUNT(*) as total FROM `order_enquiry` WHERE `deleted_at` = 0";
-//         $count_res = $conn->query($sql_count);
-//         $count_row = $count_res->fetch_assoc();
-//         $next_number = $count_row['total'] + 1;
-//         $order_no = "ORD_" . sprintf("%03d", $next_number);
-
-//         $order_date = date('Y-m-d');
-
-//         // Note: Ensure your database 'customer_id' column can accept the string 'GUEST' 
-//         // or change 'GUEST' to 0 if your column is an integer.
-//         $createOrder = "INSERT INTO `order_enquiry` (`order_no`, `order_date`, `customer_id`, `shipping_address`, `total_items`, `product_details`, `sub_total`, `discount`, `shipping_charges`, `grand_total`, `status`,`type`, `created_at`, `deleted_at`) VALUES ('$order_no', '$order_date', '$customer_id', '$shipping_address', $total_items, '$product_details_json', $sub_total, $discount, $shipping_charges, $grand_total, 0, '$order_type', '$timestamp', 0)";
-
-//         if ($conn->query($createOrder)) {
-//             $id = $conn->insert_id;
-//             $enid = uniqueID('order', $id);
-//             $update = "UPDATE `order_enquiry` SET `order_id`='$enid' WHERE `id` = $id";
-//             $conn->query($update);
-
-
-
-//             $output["head"]["code"] = 200;
-//             $output["head"]["msg"] = "Order Placed Successfully";
-//             $output["body"]["order_no"] = $order_no;
-//         } else {
-//             $output["head"]["code"] = 400;
-//             $output["head"]["msg"] = "Database Error: " . $conn->error;
-//         }
-//     } else {
-//         $output["head"]["code"] = 400;
-//         $output["head"]["msg"] = "Please provide all the required details.";
-//     }
-// }
 else {
     $output["head"]["code"] = 400;
     $output["head"]["msg"] = "Parameter Mismatch";
